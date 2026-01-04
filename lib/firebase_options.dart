@@ -42,42 +42,6 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBGqOXU16AFobz3G-J-Wb52lpjYPKgp628',
-    appId: '1:345964728818:web:f60291ba92d20525645b6b',
-    messagingSenderId: '345964728818',
-    projectId: 'etlearn-9ed52',
-    authDomain: 'etlearn-9ed52.firebaseapp.com',
-    storageBucket: 'etlearn-9ed52.firebasestorage.app',
-    measurementId: 'G-ME0L5MD37B',
-  );
-
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBXskQv0S7BC6ubDYxjPt22jLzXQ_QoGWA',
-    appId: '1:345964728818:android:0d739aac99f27701645b6b',
-    messagingSenderId: '345964728818',
-    projectId: 'etlearn-9ed52',
-    storageBucket: 'etlearn-9ed52.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCBIaFC0c4u2bgxKGSpNXx1kFL0XqzE9co',
-    appId: '1:345964728818:ios:038cb13c734ba2e5645b6b',
-    messagingSenderId: '345964728818',
-    projectId: 'etlearn-9ed52',
-    storageBucket: 'etlearn-9ed52.firebasestorage.app',
-    iosBundleId: 'com.example.facebook',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCBIaFC0c4u2bgxKGSpNXx1kFL0XqzE9co',
-    appId: '1:345964728818:ios:038cb13c734ba2e5645b6b',
-    messagingSenderId: '345964728818',
-    projectId: 'etlearn-9ed52',
-    storageBucket: 'etlearn-9ed52.firebasestorage.app',
-    iosBundleId: 'com.example.facebook',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBGqOXU16AFobz3G-J-Wb52lpjYPKgp628',
     appId: '1:345964728818:web:5dac459fe6fe5a56645b6b',
     messagingSenderId: '345964728818',
     projectId: 'etlearn-9ed52',
@@ -85,4 +49,45 @@ class DefaultFirebaseOptions {
     storageBucket: 'etlearn-9ed52.firebasestorage.app',
     measurementId: 'G-Z16Z172XZH',
   );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyBXskQv0S7BC6ubDYxjPt22jLzXQ_QoGWA',
+    appId: '1:345964728818:android:b41fa7999666a97d645b6b',
+    messagingSenderId: '345964728818',
+    projectId: 'etlearn-9ed52',
+    storageBucket: 'etlearn-9ed52.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyCBIaFC0c4u2bgxKGSpNXx1kFL0XqzE9co',
+    appId: '1:345964728818:ios:fcd95683c3b15e6c645b6b',
+    messagingSenderId: '345964728818',
+    projectId: 'etlearn-9ed52',
+    storageBucket: 'etlearn-9ed52.firebasestorage.app',
+    androidClientId: '345964728818-pubrsilr231cmgv0s67pgvl0lvbnjqj9.apps.googleusercontent.com',
+    iosClientId: '345964728818-6d13t1a1doh7pq5m34fsfrmjummgn4v6.apps.googleusercontent.com',
+    iosBundleId: 'com.example.etLearn',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyCBIaFC0c4u2bgxKGSpNXx1kFL0XqzE9co',
+    appId: '1:345964728818:ios:fcd95683c3b15e6c645b6b',
+    messagingSenderId: '345964728818',
+    projectId: 'etlearn-9ed52',
+    storageBucket: 'etlearn-9ed52.firebasestorage.app',
+    androidClientId: '345964728818-pubrsilr231cmgv0s67pgvl0lvbnjqj9.apps.googleusercontent.com',
+    iosClientId: '345964728818-6d13t1a1doh7pq5m34fsfrmjummgn4v6.apps.googleusercontent.com',
+    iosBundleId: 'com.example.etLearn',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyBGqOXU16AFobz3G-J-Wb52lpjYPKgp628',
+    appId: '1:345964728818:web:ebfde0b0351b85c7645b6b',
+    messagingSenderId: '345964728818',
+    projectId: 'etlearn-9ed52',
+    authDomain: 'etlearn-9ed52.firebaseapp.com',
+    storageBucket: 'etlearn-9ed52.firebasestorage.app',
+    measurementId: 'G-59SE2VN0ML',
+  );
+
 }
