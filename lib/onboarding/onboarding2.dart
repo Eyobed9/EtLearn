@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class Onboarding1 extends StatelessWidget {
-  const Onboarding1({super.key});
+class Onboarding2 extends StatelessWidget {
+  const Onboarding2({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -10,10 +10,10 @@ class Onboarding1 extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Image.asset("assets/images/onboarding1.png", width: 260, height: 260),
+          Image.asset("assets/images/onboarding2.png", width: 260, height: 260),
           const SizedBox(height: 20),
           const Text(
-            'Learn from your peer',
+            'Teach what you know',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF1F1F39),
@@ -26,7 +26,7 @@ class Onboarding1 extends StatelessWidget {
           const SizedBox(
             width: 260,
             child: Text(
-              'Get video aided learning for free from your peer',
+              'Share your knowledge to your peer',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF858597),

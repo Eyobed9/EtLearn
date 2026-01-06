@@ -1,4 +1,4 @@
-import 'package:et_learn/onboarding/onboarding1.dart';
+import 'package:et_learn/onboarding/onboarding.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 
@@ -20,10 +20,10 @@ class _ModalState extends State<Modal> {
   }
 
   void _navigateToLoginPage() {
-    Timer(Duration(seconds: 3), () {
+    Timer(Duration(seconds: 5), () {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const Onboarding1()),
+        MaterialPageRoute(builder: (context) => const Onboarding()),
       );
     });
   }
