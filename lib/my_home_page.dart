@@ -1,41 +1,103 @@
 import 'package:flutter/material.dart';
+import 'package:et_learn/screens/profile_view.dart';
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  int _currentIndex = 0;
+
+  Widget _homeContent() {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        _header(),
+        _pad(_searchBar(), top: 20),
+        _pad(_sectionTitle("Categories"), top: 30),
+        _pad(_categories(), top: 10),
+        _pad(_sectionTitle("Popular Courses"), top: 30),
+        _pad(_filters(), top: 10),
+        _pad(
+          _courseCard(
+            title: "Graphic Design Advanced",
+            price: "850/-",
+            students: "7830 Std",
+          ),
+          top: 20,
+        ),
+        _pad(
+          _courseCard(
+            title: "Advertisement Designing",
+            price: "400/-",
+            students: "12580 Std",
+          ),
+          top: 20,
+        ),
+        _pad(_sectionTitle("Top Mentor"), top: 30),
+        _pad(_mentors(), top: 15),
+      ],
+    );
+  }
+
+  Widget _placeholder(String label) => Center(child: Text(label));
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F8FE),
-      bottomNavigationBar: _bottomNav(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF167F71),
+        unselectedItemColor: const Color(0xFF202244),
+        selectedLabelStyle: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
+          fontFamily: 'Mulish',
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
+          fontFamily: 'Mulish',
+        ),
+        onTap: (i) => setState(() => _currentIndex = i),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'HOME',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book_outlined),
+            activeIcon: Icon(Icons.book),
+            label: 'MY COURSES',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inbox_outlined),
+            activeIcon: Icon(Icons.inbox),
+            label: 'INBOX',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'PROFILE',
+          ),
+        ],
+      ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
+        child: IndexedStack(
+          index: _currentIndex,
           children: [
-            _header(),
-            _pad(_searchBar(), top: 20),
-            _pad(_sectionTitle("Categories"), top: 30),
-            _pad(_categories(), top: 10),
-            _pad(_sectionTitle("Popular Courses"), top: 30),
-            _pad(_filters(), top: 10),
-            _pad(
-              _courseCard(
-                title: "Graphic Design Advanced",
-                price: "850/-",
-                students: "7830 Std",
-              ),
-              top: 20,
-            ),
-            _pad(
-              _courseCard(
-                title: "Advertisement Designing",
-                price: "400/-",
-                students: "12580 Std",
-              ),
-              top: 20,
-            ),
-            _pad(_sectionTitle("Top Mentor"), top: 30),
-            _pad(_mentors(), top: 15),
+            _homeContent(),
+            _placeholder('My Courses'),
+            _placeholder('Inbox'),
+            const Padding(padding: EdgeInsets.all(20.0), child: ProfileView()),
           ],
         ),
       ),
@@ -292,19 +354,6 @@ class MyHomePage extends StatelessWidget {
           _Mentor(name: "Manav"),
         ],
       ),
-    );
-  }
-
-  static Widget _bottomNav() {
-    return BottomNavigationBar(
-      selectedItemColor: const Color(0xFF167F71),
-      unselectedItemColor: const Color(0xFF202244),
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-        BottomNavigationBarItem(icon: Icon(Icons.book), label: "My Courses"),
-        BottomNavigationBarItem(icon: Icon(Icons.inbox), label: "Inbox"),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-      ],
     );
   }
 }
