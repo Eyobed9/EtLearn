@@ -9,7 +9,7 @@ class MyCoursesView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView(
         children: [
-          const SizedBox(height: 8),
+          Padding(padding: const EdgeInsets.only(top: 8), child: Container()),
 
           // Title (replaces AppBar title when embedded)
           const Padding(
@@ -28,18 +28,21 @@ class MyCoursesView extends StatelessWidget {
           // Search box
           _searchBox(),
 
-          const SizedBox(height: 20),
+          Padding(padding: const EdgeInsets.only(top: 20), child: Container()),
 
           // Tabs
           Row(
             children: const [
               Expanded(child: _CourseTab(title: 'Completed', selected: false)),
-              SizedBox(width: 12),
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Container(),
+              ),
               Expanded(child: _CourseTab(title: 'Ongoing', selected: true)),
             ],
           ),
 
-          const SizedBox(height: 20),
+          Padding(padding: const EdgeInsets.only(top: 20), child: Container()),
 
           // Course cards
           CourseCard(

@@ -11,7 +11,7 @@ class Onboarding1 extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Image.asset("assets/images/onboarding1.png", width: 260, height: 260),
-          const SizedBox(height: 20),
+          Padding(padding: const EdgeInsets.only(top: 20), child: Container()),
           const Text(
             'Learn from your peer',
             textAlign: TextAlign.center,
@@ -22,7 +22,7 @@ class Onboarding1 extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 20),
+          Padding(padding: const EdgeInsets.only(top: 20), child: Container()),
           const SizedBox(
             width: 260,
             child: Text(

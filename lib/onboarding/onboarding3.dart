@@ -12,7 +12,7 @@ class Onboarding3 extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Image.asset("assets/images/onboarding3.png", width: 260, height: 260),
-        const SizedBox(height: 20),
+        Padding(padding: const EdgeInsets.only(top: 20), child: Container()),
         const Text(
           'Earn credits',
           textAlign: TextAlign.center,
@@ -23,7 +23,7 @@ class Onboarding3 extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 20),
+        Padding(padding: const EdgeInsets.only(top: 20), child: Container()),
         const SizedBox(
           width: 260,
           child: Text(
@@ -37,8 +37,7 @@ class Onboarding3 extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 36),
-        // CTA buttons
+        Padding(padding: const EdgeInsets.only(top: 36), child: Container()),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Row(
@@ -69,7 +68,10 @@ class Onboarding3 extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(width: 12),
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Container(),
+              ),
 
               Expanded(
                 child: TextButton(

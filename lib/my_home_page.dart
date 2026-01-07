@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:et_learn/screens/profile_view.dart';
 import 'package:et_learn/screens/my_courses_view.dart';
+import 'package:et_learn/screens/inbox_screen.dart';
+import 'package:et_learn/widgets/mentor_widgets.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -97,7 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             _homeContent(),
             const MyCoursesView(),
-            _placeholder('Inbox'),
+            const InboxScreen(),
             const Padding(padding: EdgeInsets.all(20.0), child: ProfileView()),
           ],
         ),
@@ -346,49 +348,25 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _mentors() {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
-          _Mentor(name: "Jiya"),
-          _Mentor(name: "Aman"),
-          _Mentor(name: "Rahul.J"),
-          _Mentor(name: "Manav"),
-        ],
+      child: Container(
+        height: 110,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            Padding(padding: EdgeInsets.only(left: 4), child: Container()),
+            const MentorTile(name: 'Jiya'),
+            Padding(padding: EdgeInsets.only(left: 12), child: Container()),
+            const MentorTile(name: 'Aman'),
+            Padding(padding: EdgeInsets.only(left: 12), child: Container()),
+            const MentorTile(name: 'Rahul.J'),
+            Padding(padding: EdgeInsets.only(left: 12), child: Container()),
+            const MentorTile(name: 'Manav'),
+            Padding(padding: EdgeInsets.only(left: 12), child: Container()),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ================= Mentor Widget =================
-
-class _Mentor extends StatelessWidget {
-  final String name;
-  const _Mentor({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          height: 70,
-          width: 70,
-          decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(
-            name,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF202244),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
