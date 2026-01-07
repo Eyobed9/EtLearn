@@ -39,13 +39,17 @@ class MentorsView extends StatelessWidget {
             ),
 
             Row(
-              children: const [
-                Expanded(child: TabButton(title: 'Courses', selected: false)),
-                Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Container(),
+              children: [
+                const Expanded(
+                  child: TabButton(title: 'Courses', selected: false),
                 ),
-                Expanded(child: TabButton(title: 'Mentors', selected: true)),
+                const Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: SizedBox(),
+                ),
+                const Expanded(
+                  child: TabButton(title: 'Mentors', selected: true),
+                ),
               ],
             ),
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:et_learn/screens/profile_view.dart';
 import 'package:et_learn/screens/my_courses_view.dart';
+import 'package:et_learn/screens/search_page.dart';
 import 'package:et_learn/screens/inbox_screen.dart';
 import 'package:et_learn/widgets/mentor_widgets.dart';
 
@@ -46,7 +47,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _placeholder(String label) => Center(child: Text(label));
+  // Placeholder removed — replaced by real screens (InboxScreen)
 
   @override
   Widget build(BuildContext context) {
@@ -164,42 +165,50 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _searchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        height: 60,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Expanded(
-              child: Text(
-                "Search for...",
-                style: TextStyle(
-                  color: Color(0xFFB4BDC4),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SearchPage()),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          height: 60,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  "Search for...",
+                  style: TextStyle(
+                    color: Color(0xFFB4BDC4),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            Container(
-              height: 40,
-              width: 40,
-              decoration: BoxDecoration(
-                color: Color(0xFF0961F5),
-                borderRadius: BorderRadius.circular(10),
+              Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0961F5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.search, color: Colors.white),
               ),
-              child: const Icon(Icons.search, color: Colors.white),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -353,15 +362,15 @@ class _MyHomePageState extends State<MyHomePage> {
         child: ListView(
           scrollDirection: Axis.horizontal,
           children: [
-            Padding(padding: EdgeInsets.only(left: 4), child: Container()),
+            const SizedBox(width: 4),
             const MentorTile(name: 'Jiya'),
-            Padding(padding: EdgeInsets.only(left: 12), child: Container()),
+            const SizedBox(width: 12),
             const MentorTile(name: 'Aman'),
-            Padding(padding: EdgeInsets.only(left: 12), child: Container()),
+            const SizedBox(width: 12),
             const MentorTile(name: 'Rahul.J'),
-            Padding(padding: EdgeInsets.only(left: 12), child: Container()),
+            const SizedBox(width: 12),
             const MentorTile(name: 'Manav'),
-            Padding(padding: EdgeInsets.only(left: 12), child: Container()),
+            const SizedBox(width: 12),
           ],
         ),
       ),

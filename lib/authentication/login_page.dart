@@ -1,4 +1,3 @@
-import 'package:et_learn/my_home_page.dart';
 import 'package:et_learn/widget_tree.dart';
 import 'package:flutter/material.dart';
 import 'package:et_learn/authentication/signup_page.dart';

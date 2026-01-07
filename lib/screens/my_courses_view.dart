@@ -32,13 +32,17 @@ class MyCoursesView extends StatelessWidget {
 
           // Tabs
           Row(
-            children: const [
-              Expanded(child: _CourseTab(title: 'Completed', selected: false)),
-              Padding(
-                padding: const EdgeInsets.only(left: 12),
-                child: Container(),
+            children: [
+              const Expanded(
+                child: _CourseTab(title: 'Completed', selected: false),
               ),
-              Expanded(child: _CourseTab(title: 'Ongoing', selected: true)),
+              const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: SizedBox(),
+              ),
+              const Expanded(
+                child: _CourseTab(title: 'Ongoing', selected: true),
+              ),
             ],
           ),
 
