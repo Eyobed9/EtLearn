@@ -1,4 +1,5 @@
 import 'package:et_learn/my_home_page.dart';
+import 'package:et_learn/widget_tree.dart';
 import 'package:flutter/material.dart';
 import 'package:et_learn/authentication/signup_page.dart';
 import 'auth.dart';
@@ -29,9 +30,7 @@ class _LoginPage extends State<LoginPage> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => const MyHomePage(title: "EtLearn"),
-        ),
+        MaterialPageRoute(builder: (context) => const WidgetTree()),
       );
     } on FirebaseAuthException catch (e) {
       setState(() {
@@ -58,9 +57,7 @@ class _LoginPage extends State<LoginPage> {
     if (user != null && mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => const MyHomePage(title: "EtLearn"),
-        ),
+        MaterialPageRoute(builder: (context) => const WidgetTree()),
       );
     }
   }

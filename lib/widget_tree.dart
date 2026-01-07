@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import "package:et_learn/authentication/auth.dart";
-// import "package:facebook/authentication/login_page.dart";
 import "package:et_learn/my_home_page.dart";
 import "package:et_learn/onboarding/opening_modal.dart";
 
@@ -18,9 +17,9 @@ class _WidgetTreeState extends State<WidgetTree> {
       stream: Auth().authStateChanges,
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return MyHomePage(title: "Facebook");
+          return MyHomePage();
         } else {
-          return const Modal(title: "Facebook");
+          return const Modal(title: "EtLearn");
         }
       },
     );
