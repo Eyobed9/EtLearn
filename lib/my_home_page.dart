@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:et_learn/screens/profile_view.dart';
+import 'package:et_learn/screens/my_courses_view.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -95,7 +96,7 @@ class _MyHomePageState extends State<MyHomePage> {
           index: _currentIndex,
           children: [
             _homeContent(),
-            _placeholder('My Courses'),
+            const MyCoursesView(),
             _placeholder('Inbox'),
             const Padding(padding: EdgeInsets.all(20.0), child: ProfileView()),
           ],
