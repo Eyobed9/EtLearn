@@ -39,6 +39,8 @@ dependencies:
   google_sign_in: ^6.2.1
   jitsi_meet: ^4.0.0
   supabase_flutter: ^2.0.0
+  image_picker: ^1.0.0
+  font_awesome_flutter: ^10.4.0
 
 dev_dependencies:
   flutter_test:
