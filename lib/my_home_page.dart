@@ -4,7 +4,6 @@ import 'package:et_learn/screens/my_courses_view.dart';
 import 'package:et_learn/screens/search_page.dart';
 import 'package:et_learn/screens/inbox_screen.dart';
 import 'package:et_learn/widgets/mentor_widgets.dart';
-import 'package:et_learn/services/jitsi_service.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:et_learn/authentication/signup_page.dart';
 import 'auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:et_learn/services/user_sync_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -27,6 +28,11 @@ class _LoginPage extends State<LoginPage> {
 
       if (!mounted) return;
 
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await UserSyncService.syncFirebaseUser(user);
+      }
+      
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const WidgetTree()),
@@ -54,6 +60,7 @@ class _LoginPage extends State<LoginPage> {
     if (!mounted) return;
 
     if (user != null && mounted) {
+      await UserSyncService.syncFirebaseUser(user.user!);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const WidgetTree()),
