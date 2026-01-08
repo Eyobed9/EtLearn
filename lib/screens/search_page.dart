@@ -37,13 +37,16 @@ class _SearchPageState extends State<SearchPage> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              // Top Bar with close button
+              // Top Bar with back button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.maybePop(context),
-                    icon: const Icon(Icons.close, color: Color(0xFF202244)),
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Color(0xFF202244),
+                    ),
                   ),
                   // keep status icons visually similar
                   Row(
