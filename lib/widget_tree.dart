@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import "package:et_learn/authentication/auth.dart";
-import "package:et_learn/my_home_page.dart";
-import "package:et_learn/onboarding/opening_modal.dart";
+import "package:et_learn/screens/my_home_page.dart";
+import "package:et_learn/screens/onboarding/opening_modal.dart";
 
 class WidgetTree extends StatefulWidget {
   const WidgetTree({super.key});

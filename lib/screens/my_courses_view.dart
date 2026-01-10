@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 
-class MyCoursesView extends StatelessWidget {
+enum CourseTabType { learning, teaching }
+
+class MyCoursesView extends StatefulWidget {
   const MyCoursesView({super.key});
+
+  @override
+  State<MyCoursesView> createState() => _MyCoursesViewState();
+}
+
+class _MyCoursesViewState extends State<MyCoursesView> {
+  CourseTabType selectedTab = CourseTabType.learning;
 
   @override
   Widget build(BuildContext context) {
@@ -9,9 +18,10 @@ class MyCoursesView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView(
         children: [
-          Padding(padding: const EdgeInsets.only(top: 8), child: Container()),
+          // Top padding
+          const Padding(padding: EdgeInsets.only(top: 8)),
 
-          // Title (replaces AppBar title when embedded)
+          // Title
           const Padding(
             padding: EdgeInsets.only(top: 8.0, bottom: 12.0),
             child: Text(
@@ -28,71 +38,56 @@ class MyCoursesView extends StatelessWidget {
           // Search box
           _searchBox(),
 
-          Padding(padding: const EdgeInsets.only(top: 20), child: Container()),
+          // Padding
+          const Padding(padding: EdgeInsets.only(top: 20)),
 
           // Tabs
           Row(
             children: [
-              const Expanded(
-                child: _CourseTab(title: 'Completed', selected: false),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedTab = CourseTabType.learning;
+                    });
+                  },
+                  child: _CourseTab(
+                    title: 'Learning',
+                    selected: selectedTab == CourseTabType.learning,
+                  ),
+                ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(left: 12),
-                child: SizedBox(),
-              ),
-              const Expanded(
-                child: _CourseTab(title: 'Ongoing', selected: true),
+              const Padding(padding: EdgeInsets.only(left: 12)),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedTab = CourseTabType.teaching;
+                    });
+                  },
+                  child: _CourseTab(
+                    title: 'Teaching',
+                    selected: selectedTab == CourseTabType.teaching,
+                  ),
+                ),
               ),
             ],
           ),
 
-          Padding(padding: const EdgeInsets.only(top: 20), child: Container()),
+          // Padding
+          const Padding(padding: EdgeInsets.only(top: 20)),
 
-          // Course cards
-          CourseCard(
-            category: 'UI/UX Design',
-            title: 'Intro to UI/UX Design',
-            rating: '4.4',
-            duration: '3 Hrs 06 Mins',
-            progress: 0.75,
-            progressText: '93/125',
-            progressColor: const Color(0xFF167F71),
-          ),
-
-          CourseCard(
-            category: 'Web Development',
-            title: 'Wordpress website Dev..',
-            rating: '3.9',
-            duration: '1 Hrs 58 Mins',
-            progress: 0.4,
-            progressText: '12/31',
-            progressColor: const Color(0xFFFCCB40),
-          ),
-
-          CourseCard(
-            category: 'UI/UX Design',
-            title: '3D Blender and UI/UX',
-            rating: '4.6',
-            duration: '2 Hrs 46 Mins',
-            progress: 0.6,
-            progressText: '56/98',
-            progressColor: const Color(0xFFFF6B00),
-          ),
-
-          CourseCard(
-            category: 'UX/UI Design',
-            title: 'Learn UX User Persona',
-            rating: '3.9',
-            duration: '1 Hrs 58 Mins',
-            progress: 0.83,
-            progressText: '29/35',
-            progressColor: const Color(0xFFFCCB40),
-          ),
+          // Dynamic content
+          if (selectedTab == CourseTabType.learning)
+            ..._learningCourses()
+          else
+            ..._teachingCourses(),
         ],
       ),
     );
   }
 
+  // ---------------- Search Box ----------------
   Widget _searchBox() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -133,8 +128,56 @@ class MyCoursesView extends StatelessWidget {
       ),
     );
   }
+
+  // ---------------- Courses ----------------
+  List<Widget> _learningCourses() {
+    return const [
+      CourseCard(
+        category: 'UI/UX Design',
+        title: 'Intro to UI/UX Design',
+        rating: '4.4',
+        duration: '3 Hrs 06 Mins',
+        progress: 0.75,
+        progressText: '93/125',
+        progressColor: Color(0xFF167F71),
+      ),
+      CourseCard(
+        category: 'UI/UX Design',
+        title: '3D Blender and UI/UX',
+        rating: '4.6',
+        duration: '2 Hrs 46 Mins',
+        progress: 0.6,
+        progressText: '56/98',
+        progressColor: Color(0xFFFF6B00),
+      ),
+    ];
+  }
+
+  List<Widget> _teachingCourses() {
+    return const [
+      CourseCard(
+        category: 'Web Development',
+        title: 'Wordpress website Dev..',
+        rating: '3.9',
+        duration: '1 Hrs 58 Mins',
+        progress: 0.4,
+        progressText: '12/31',
+        progressColor: Color(0xFFFCCB40),
+      ),
+      CourseCard(
+        category: 'UX/UI Design',
+        title: 'Learn UX User Persona',
+        rating: '3.9',
+        duration: '1 Hrs 58 Mins',
+        progress: 0.83,
+        progressText: '29/35',
+        progressColor: Color(0xFFFCCB40),
+      ),
+    ];
+  }
 }
 
+// ---------------- Course Card ----------------
 class CourseCard extends StatelessWidget {
   final String category;
   final String title;
@@ -193,14 +236,14 @@ class CourseCard extends StatelessWidget {
                 Row(
                   children: [
                     const Icon(Icons.star, size: 14, color: Color(0xFFFFD166)),
-                    const SizedBox(width: 6),
+                    const Padding(padding: EdgeInsets.only(left: 6)),
                     Text(
                       rating,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(width: 12),
+                    const Padding(padding: EdgeInsets.only(left: 12)),
                     const Text('|', style: TextStyle(fontSize: 14)),
-                    const SizedBox(width: 12),
+                    const Padding(padding: EdgeInsets.only(left: 12)),
                     Text(
                       duration,
                       style: const TextStyle(color: Color(0xFF545454)),
@@ -213,7 +256,7 @@ class CourseCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const Padding(padding: EdgeInsets.only(top: 8)),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
@@ -230,6 +273,7 @@ class CourseCard extends StatelessWidget {
   }
 }
 
+// ---------------- Tab Widget ----------------
 class _CourseTab extends StatelessWidget {
   final String title;
   final bool selected;
@@ -243,7 +287,6 @@ class _CourseTab extends StatelessWidget {
       decoration: BoxDecoration(
         color: selected ? Colors.white : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
-        border: selected ? null : Border.all(color: Colors.transparent),
         boxShadow: selected
             ? const [BoxShadow(color: Color(0x14000000), blurRadius: 8)]
             : null,

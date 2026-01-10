@@ -4,6 +4,8 @@ import 'package:et_learn/screens/my_courses_view.dart';
 import 'package:et_learn/screens/search_page.dart';
 import 'package:et_learn/screens/inbox_screen.dart';
 import 'package:et_learn/widgets/mentor_widgets.dart';
+import 'package:et_learn/widgets/base_scaffold.dart';
+import 'package:et_learn/authentication/auth.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -13,6 +15,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final user = Auth().currentUser;
   int _currentIndex = 0;
 
   Widget _homeContent() {
@@ -47,12 +50,9 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // Placeholder removed — replaced by real screens (InboxScreen)
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F8FE),
+    return BaseScaffold(
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
@@ -108,8 +108,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // ================= Helpers =================
-
   Widget _pad(Widget child, {double top = 0}) {
     return Padding(
       padding: EdgeInsets.only(top: top),
@@ -125,16 +123,16 @@ class _MyHomePageState extends State<MyHomePage> {
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
-                "Hi, ALEX",
-                style: TextStyle(
+                "Hi, ${user?.displayName ?? 'User'}",
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF202244),
                 ),
               ),
-              Padding(
+              const Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
                   "What would you like to learn today?",
@@ -337,12 +335,48 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
-                    child: Text(
-                      "$price  |  4.2  |  $students",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0961F5),
-                      ),
+                    child: Row(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.monetization_on,
+                              color: Color(0xFFFFD166),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              // extract numeric amount from price string (e.g. "850/-" -> "850")
+                              RegExp(r"\\d+").firstMatch(price)?.group(0) ??
+                                  price,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0961F5),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('|', style: TextStyle(fontSize: 14)),
+                        const SizedBox(width: 12),
+                        const Text(
+                          '4.2',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0961F5),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('|', style: TextStyle(fontSize: 14)),
+                        const SizedBox(width: 12),
+                        Text(
+                          students,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0961F5),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -357,7 +391,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _mentors() {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: Container(
+      child: SizedBox(
         height: 110,
         child: ListView(
           scrollDirection: Axis.horizontal,

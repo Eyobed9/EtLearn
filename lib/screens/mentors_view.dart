@@ -1,24 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:et_learn/widgets/mentor_widgets.dart';
+import 'package:et_learn/widgets/base_scaffold.dart';
 
 class MentorsView extends StatelessWidget {
   const MentorsView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F8FE),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        title: const Text(
-          'Mentors',
-          style: TextStyle(
-            color: Color(0xFF202244),
-            fontFamily: 'Jost',
-            fontSize: 21,
-            fontWeight: FontWeight.w600,
-          ),
+    return BaseScaffold(
+      title: const Text(
+        'Mentors',
+        style: TextStyle(
+          color: Color(0xFF202244),
+          fontFamily: 'Jost',
+          fontSize: 21,
+          fontWeight: FontWeight.w600,
         ),
       ),
       body: Padding(

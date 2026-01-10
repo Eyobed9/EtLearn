@@ -1,27 +1,32 @@
-// import 'package:jitsi_meet/jitsi_meet.dart';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
 
-// class JitsiService {
-//   static Future<void> joinMeeting({
-//     required String roomName,
-//     String? serverUrl,
-//     String? displayName,
-//     String? email,
-//     bool audioMuted = false,
-//     bool videoMuted = false,
-//   }) async {
-//     try {
-//       var options = JitsiMeetingOptions(room: roomName)
-//         ..serverURL = serverUrl
-//         ..userDisplayName = displayName
-//         ..userEmail = email
-//         ..audioMuted = audioMuted
-//         ..videoMuted = videoMuted;
+import '../models/request_data.dart';
 
-//       await JitsiMeet.joinMeeting(options);
-//     } catch (e) {
-//       // keep failure silent for now; caller can handle if needed
-//       // ignore: avoid_print
-//       print('Jitsi join error: $e');
-//     }
-//   }
-// }
+/// Simple wrapper around `JitsiMeetWrapper` to centralize meeting logic.
+class JitsiService {
+  /// Add a meeting listener (forward to `JitsiMeetWrapper`).
+  static void addListener(JitsiMeetingListener listener) =>
+      JitsiMeetWrapper.addListener(listener);
+
+  /// Remove all registered listeners.
+  static void removeAllListeners() => JitsiMeetWrapper.removeAllListeners();
+
+  /// Start a meeting for [request]. Returns when join completes.
+  static Future<void> startMeeting({
+    required RequestData request,
+    required String displayName,
+  }) async {
+    final roomName = 'Flutter_${request.name}_${Random().nextInt(10000)}';
+
+    await JitsiMeetWrapper.joinMeeting(
+      options: JitsiMeetingOptions(
+        roomNameOrUrl: roomName,
+        userDisplayName: displayName,
+        audioMuted: false,
+        videoMuted: false,
+      ),
+    );
+  }
+}

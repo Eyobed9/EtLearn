@@ -6,7 +6,7 @@ final supabase = Supabase.instance.client;
 class UserSyncService {
   static Future<void> syncFirebaseUser(fb.User user) async {
     await supabase.from('users').upsert({
-      'id': user.uid,
+      'uid': user.uid,
       'email': user.email,
       'full_name': user.displayName ?? 'New User',
       'credits': 0,

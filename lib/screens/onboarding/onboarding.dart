@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:et_learn/onboarding/onboarding1.dart';
-import 'package:et_learn/onboarding/onboarding2.dart';
-import 'package:et_learn/onboarding/onboarding3.dart';
+import 'package:et_learn/screens/onboarding/onboarding1.dart';
+import 'package:et_learn/screens/onboarding/onboarding2.dart';
+import 'package:et_learn/screens/onboarding/onboarding3.dart';
 
 class Onboarding extends StatefulWidget {
   const Onboarding({super.key});

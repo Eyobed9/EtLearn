@@ -1,4 +1,4 @@
-import 'package:et_learn/onboarding/onboarding.dart';
+import 'package:et_learn/screens/onboarding/onboarding.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 
