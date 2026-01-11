@@ -32,7 +32,8 @@ class _LoginPage extends State<LoginPage> {
       if (user != null) {
         await UserSyncService.syncFirebaseUser(user);
       }
-      
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const WidgetTree()),
@@ -58,9 +59,9 @@ class _LoginPage extends State<LoginPage> {
     }
 
     if (!mounted) return;
-
     if (user != null && mounted) {
       await UserSyncService.syncFirebaseUser(user.user!);
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const WidgetTree()),

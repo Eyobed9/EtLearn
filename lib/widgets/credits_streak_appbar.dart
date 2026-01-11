@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:et_learn/helpers/credits.dart';
 
 class CreditsStreakAppBar extends StatefulWidget
     implements PreferredSizeWidget {
@@ -39,20 +40,27 @@ class _CreditsStreakAppBarState extends State<CreditsStreakAppBar> {
         FutureBuilder<Map<String, dynamic>?>(
           future: _fetchStats(),
           builder: (context, snapshot) {
-            final credits = snapshot.data?['credits'] ?? 0;
             final streak = snapshot.data?['streak'] ?? 0;
 
-            return Row(
-              children: [
-                const Icon(Icons.local_fire_department, color: Colors.orange),
-                const SizedBox(width: 6),
-                Text(streak.toString()),
-                const SizedBox(width: 16),
-                const Icon(Icons.monetization_on, color: Colors.amber),
-                const SizedBox(width: 6),
-                Text(credits.toString()),
-                const SizedBox(width: 12),
-              ],
+            return ValueListenableBuilder<int>(
+              valueListenable: totalCreditsNotifier,
+              builder: (context, credits, _) {
+                return Row(
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(streak.toString()),
+                    const SizedBox(width: 16),
+                    const Icon(Icons.monetization_on, color: Colors.amber),
+                    const SizedBox(width: 6),
+                    Text(credits.toString()),
+                    const SizedBox(width: 12),
+                  ],
+                );
+              },
             );
           },
         ),

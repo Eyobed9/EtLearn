@@ -141,6 +141,7 @@ class ProfileView extends StatelessWidget {
                   color: Colors.red,
                   onTap: () async {
                     await Auth().signOut();
+                    if (!context.mounted) return;
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => LoginPage()),

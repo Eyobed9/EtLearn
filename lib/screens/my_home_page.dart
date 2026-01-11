@@ -6,6 +6,7 @@ import 'package:et_learn/screens/inbox_screen.dart';
 import 'package:et_learn/widgets/mentor_widgets.dart';
 import 'package:et_learn/widgets/base_scaffold.dart';
 import 'package:et_learn/authentication/auth.dart';
+import 'package:et_learn/helpers/credits.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -124,13 +125,18 @@ class _MyHomePageState extends State<MyHomePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Hi, ${user?.displayName ?? 'User'}",
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF202244),
-                ),
+              ValueListenableBuilder<int>(
+                valueListenable: totalCreditsNotifier,
+                builder: (context, totalCredits, _) {
+                  return Text(
+                    "Hi, ${user?.displayName ?? 'User'}",
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF202244),
+                    ),
+                  );
+                },
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 6),
