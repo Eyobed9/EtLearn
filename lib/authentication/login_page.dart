@@ -4,6 +4,7 @@ import 'package:et_learn/authentication/signup_page.dart';
 import 'auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:et_learn/services/user_sync_service.dart';
+import 'package:et_learn/screens/setup_profile.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,6 +32,15 @@ class _LoginPage extends State<LoginPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         await UserSyncService.syncFirebaseUser(user);
+        final needsSetup = await UserSyncService.needsProfileSetup(user);
+        if (!mounted) return;
+        if (needsSetup) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SetupProfilePage()),
+          );
+          return;
+        }
       }
 
       if (!mounted) return;
@@ -61,7 +71,16 @@ class _LoginPage extends State<LoginPage> {
     if (!mounted) return;
     if (user != null && mounted) {
       await UserSyncService.syncFirebaseUser(user.user!);
+      final fbUser = user.user!;
+      final needsSetup = await UserSyncService.needsProfileSetup(fbUser);
       if (!mounted) return;
+      if (needsSetup) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SetupProfilePage()),
+        );
+        return;
+      }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const WidgetTree()),

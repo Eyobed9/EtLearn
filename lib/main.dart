@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'firebase_options.dart';
 import 'package:et_learn/widget_tree.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔐 Firebase Auth (already working)
+  // 🔐 Firebase Auth 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

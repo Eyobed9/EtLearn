@@ -5,6 +5,7 @@ class BaseScaffold extends StatelessWidget {
   final Widget body;
   final Widget? title;
   final Widget? bottomNavigationBar;
+  final Widget? floatingActionButton;
   final Color backgroundColor;
 
   const BaseScaffold({
@@ -12,6 +13,7 @@ class BaseScaffold extends StatelessWidget {
     required this.body,
     this.title,
     this.bottomNavigationBar,
+    this.floatingActionButton,
     this.backgroundColor = const Color(0xFFF4F8FE),
   });
 
@@ -22,6 +24,7 @@ class BaseScaffold extends StatelessWidget {
       appBar: CreditsStreakAppBar(title: title),
       body: body,
       bottomNavigationBar: bottomNavigationBar,
+      floatingActionButton: floatingActionButton,
     );
   }
 }

@@ -1,9 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:et_learn/models/request_data.dart';
-import 'package:et_learn/helpers/credits.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class InboxScreen extends StatefulWidget {
@@ -16,124 +12,119 @@ class InboxScreen extends StatefulWidget {
 class _InboxScreenState extends State<InboxScreen> {
   bool isRequestsTab = true;
 
-  List<RequestData> requests = [];
+  List<Map<String, dynamic>> requests = [];
   final supabase = Supabase.instance.client;
   final String uid = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void initState() {
     super.initState();
-    _loadCredits();
     _loadRequests();
   }
 
-  /// Load user's current credits
-  Future<void> _loadCredits() async {
+  /// Load pending requests for courses the teacher owns
+  Future<void> _loadRequests() async {
+    List<Map<String, dynamic>> loadedRequests = [];
+
     try {
-      final data = await supabase
+      final response = await supabase
+          .from('offers')
+          .select('''
+            id,
+            uid,
+            subject,
+            description,
+            available_times,
+            status,
+            users ( full_name, photo_url )
+          ''')
+          .eq('type', 'learn')
+          .eq('status', 'open');
+
+      // Only requests where the subject matches one of teacher's subjects
+      final teacherData = await supabase
           .from('users')
-          .select('credits')
+          .select('subjects_teach')
           .eq('uid', uid)
           .maybeSingle();
 
-      if (data is Map<String, dynamic>) {
-        totalCreditsNotifier.value = data['credits'] ?? 0;
-      }
-    } catch (e) {
-      debugPrint('Error loading credits: $e');
-    }
-  }
+      final List<String> subjectsTeach =
+          List<String>.from(teacherData?['subjects_teach'] ?? []);
 
-  /// Load pending requests (or demo request)
-  Future<void> _loadRequests() async {
-    // For demo purposes, always include a demo request
-    final List<RequestData> loadedRequests = [
-      const RequestData(
-        id: 'demo1',
-        name: 'Demo Student',
-        course: 'Flutter Basics',
-        duration: '1 Hr',
-        coins: 50,
-        availableTimes: ['Now +5 sec'],
-      ),
-    ];
+      final filteredRequests = (response as List)
+          .where((r) => subjectsTeach.contains(r['subject']))
+          .toList();
+
+      loadedRequests.addAll(filteredRequests.cast<Map<String, dynamic>>());
+    } catch (e) {
+      debugPrint('Error fetching requests: $e');
+    }
+
+    // Add one demo request for testing if empty
+    if (loadedRequests.isEmpty) {
+      loadedRequests.add({
+        'id': 0,
+        'uid': 'demo',
+        'subject': 'Demo Subject',
+        'description': 'This is a demo request for testing',
+        'available_times': ['Anytime'],
+        'status': 'open',
+        'users': {'full_name': 'Demo Student', 'photo_url': null},
+      });
+    }
 
     setState(() {
       requests = loadedRequests;
     });
   }
 
-  /// Add coins to existing credits in Supabase
-  Future<void> _addCoins(int coinsToAdd) async {
+  /// Accept a request
+  Future<void> _acceptRequest(int offerId) async {
+    if (offerId == 0) {
+      // Demo request: just remove from UI
+      setState(() => requests.removeWhere((r) => r['id'] == 0));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Demo request accepted!')));
+      return;
+    }
+
     try {
-      // Fetch current credits
-      final data = await supabase
-          .from('users')
-          .select('credits')
-          .eq('uid', uid)
-          .maybeSingle();
-
-      int currentCredits = totalCreditsNotifier.value;
-      if (data is Map<String, dynamic>) {
-        currentCredits = data['credits'] ?? currentCredits;
-      }
-
-      // Add coins
-      final newCredits = currentCredits + coinsToAdd;
-
-      // Update Supabase
       await supabase
-          .from('users')
-          .update({'credits': newCredits})
-          .eq('uid', uid);
+          .from('offers')
+          .update({'status': 'accepted'})
+          .eq('id', offerId);
 
-      // Update notifier
-      totalCreditsNotifier.value = newCredits;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Request accepted!')));
+
+      _loadRequests();
     } catch (e) {
-      debugPrint('Error adding coins: $e');
+      debugPrint('Error accepting request: $e');
     }
   }
 
-  /// Start Jitsi meeting and credit coins afterwards
-  Future<void> _startDemoMeeting(RequestData request) async {
-    // Remove request from UI immediately
-    setState(() {
-      requests.remove(request);
-    });
+  /// Decline a request
+  Future<void> _declineRequest(int offerId) async {
+    if (offerId == 0) {
+      setState(() => requests.removeWhere((r) => r['id'] == 0));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Demo request declined!')));
+      return;
+    }
 
-    final roomName =
-        'ETLearn_${request.name}_${DateTime.now().millisecondsSinceEpoch}';
+    try {
+      await supabase
+          .from('offers')
+          .update({'status': 'declined'})
+          .eq('id', offerId);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Meeting with ${request.name} will start in 5 seconds...',
-        ),
-      ),
-    );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Request declined!')));
 
-    // Simulate short countdown
-    await Future.delayed(const Duration(seconds: 5));
-
-    // Start Jitsi meeting
-    await JitsiMeetWrapper.joinMeeting(
-      options: JitsiMeetingOptions(
-        roomNameOrUrl: roomName,
-        userDisplayName: 'Teacher',
-      ),
-    );
-
-    // Add coins after meeting ends
-    await _addCoins(request.coins);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Meeting with ${request.name} ended. Coins (${request.coins}) credited!',
-        ),
-      ),
-    );
+      _loadRequests();
+    } catch (e) {
+      debugPrint('Error declining request: $e');
+    }
   }
 
   @override
@@ -143,19 +134,14 @@ class _InboxScreenState extends State<InboxScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: ValueListenableBuilder<int>(
-          valueListenable: totalCreditsNotifier,
-          builder: (context, totalCredits, _) {
-            return Text(
-              'Inbox',
-              style: const TextStyle(
-                color: Color(0xFF202244),
-                fontFamily: 'Jost',
-                fontSize: 21,
-                fontWeight: FontWeight.w600,
-              ),
-            );
-          },
+        title: const Text(
+          'Inbox',
+          style: TextStyle(
+            color: Color(0xFF202244),
+            fontFamily: 'Jost',
+            fontSize: 21,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       body: Padding(
@@ -176,10 +162,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () => setState(() => isRequestsTab = true),
-                    child: _TabButton(
-                      title: 'Requests',
-                      selected: isRequestsTab,
-                    ),
+                    child: _TabButton(title: 'Requests', selected: isRequestsTab),
                   ),
                 ),
               ],
@@ -202,36 +185,26 @@ class _InboxScreenState extends State<InboxScreen> {
                 ),
                 child: isRequestsTab
                     ? requests.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No pending requests',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            )
-                          : ListView(
-                              children: requests
-                                  .map(
-                                    (req) => RequestTile(
-                                      request: req,
-                                      onAccept: () => _startDemoMeeting(req),
-                                      onDeny: () {
-                                        setState(() {
-                                          requests.remove(req);
-                                        });
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Denied ${req.name}, requester notified.',
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  )
-                                  .toList(),
-                            )
+                        ? const Center(
+                            child: Text(
+                              'No pending requests',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: requests.length,
+                            itemBuilder: (context, index) {
+                              final req = requests[index];
+                              final user = req['users'];
+                              return RequestTile(
+                                requesterName: user?['full_name'] ?? 'Unknown',
+                                subject: req['subject'],
+                                description: req['description'] ?? '',
+                                onAccept: () => _acceptRequest(req['id']),
+                                onDeny: () => _declineRequest(req['id']),
+                              );
+                            },
+                          )
                     : const Center(
                         child: Text(
                           'Chat screen here...',
@@ -247,7 +220,6 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 }
 
-/// Tab button used in the inbox header.
 class _TabButton extends StatelessWidget {
   final String title;
   final bool selected;
@@ -276,15 +248,18 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-/// Shows a single request with Accept/Deny buttons.
 class RequestTile extends StatelessWidget {
-  final RequestData request;
+  final String requesterName;
+  final String subject;
+  final String description;
   final VoidCallback onAccept;
   final VoidCallback onDeny;
 
   const RequestTile({
     super.key,
-    required this.request,
+    required this.requesterName,
+    required this.subject,
+    required this.description,
     required this.onAccept,
     required this.onDeny,
   });
@@ -297,7 +272,7 @@ class RequestTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            request.name,
+            requesterName,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -306,7 +281,7 @@ class RequestTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${request.course} • ${request.duration} • ${request.coins} coins',
+            '$subject • $description',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -338,7 +313,7 @@ class RequestTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Deny'),
+                  child: const Text('Decline'),
                 ),
               ),
             ],

@@ -14,4 +14,31 @@ class UserSyncService {
       'updated_at': DateTime.now().toIso8601String(),
     });
   }
+
+  /// Returns true when the user's profile appears incomplete and they
+  /// should be sent to the setup flow.
+  static Future<bool> needsProfileSetup(fb.User user) async {
+    try {
+      final response = await supabase
+          .from('users')
+          .select()
+          .eq('uid', user.uid)
+          .maybeSingle();
+
+      if (response == null) return true;
+
+      // response is dynamic (Map) - check key fields that indicate completion
+      final fullName = response['full_name'];
+      final photo = response['photo_url'];
+      final bio = response['bio'];
+
+      if (fullName == null || fullName == 'New User') return true;
+      if (photo == null) return true;
+      if (bio == null) return true;
+
+      return false;
+    } catch (_) {
+      return true;
+    }
+  }
 }
