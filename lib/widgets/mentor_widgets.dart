@@ -31,51 +31,56 @@ class TabButton extends StatelessWidget {
 class MentorTile extends StatelessWidget {
   final String name;
   final String subtitle;
+  final String? photoUrl;
 
   const MentorTile({
     super.key,
     required this.name,
     this.subtitle = '3D Design',
+    this.photoUrl,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
+      padding: const EdgeInsets.only(right: 12),
+      child: Column(
         children: [
-          Container(
-            width: 66,
-            height: 66,
-            decoration: const BoxDecoration(
-              color: Colors.black,
-              shape: BoxShape.circle,
+          // Profile image
+          CircleAvatar(
+            radius: 33,
+            backgroundColor: Colors.grey.shade300,
+            backgroundImage: photoUrl != null && photoUrl!.isNotEmpty
+                ? NetworkImage(photoUrl!)
+                : null,
+            child: photoUrl == null || photoUrl!.isEmpty
+                ? const Icon(Icons.person, size: 33)
+                : null,
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 70,
+            child: Text(
+              name,
+              style: const TextStyle(
+                fontFamily: 'Jost',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF202244),
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontFamily: 'Jost',
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF202244),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontFamily: 'Mulish',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF545454),
-                ),
-              ),
-            ],
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontFamily: 'Mulish',
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF545454),
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

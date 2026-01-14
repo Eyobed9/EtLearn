@@ -1,63 +1,157 @@
 import 'package:flutter/material.dart';
 import 'package:et_learn/authentication/auth.dart';
 import 'package:et_learn/authentication/login_page.dart';
+import 'package:et_learn/services/database_service.dart';
+import 'package:et_learn/helpers/credits.dart';
+import 'package:et_learn/screens/setup_profile.dart';
+import 'package:et_learn/screens/course_detail_page.dart';
 
-class ProfileView extends StatelessWidget {
+class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final user = Auth().currentUser;
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          const SizedBox(height: 20),
+  State<ProfileView> createState() => _ProfileViewState();
+}
 
-          // Avatar and basic info from authenticated user
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              user?.photoURL != null
-                  ? Container(
-                      width: 110,
-                      height: 110,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        image: DecorationImage(
-                          image: NetworkImage(user!.photoURL!),
-                          fit: BoxFit.cover,
-                        ),
-                        border: Border.all(
-                          color: const Color(0xFF167F71),
-                          width: 4,
-                        ),
+class _ProfileViewState extends State<ProfileView> {
+  final DatabaseService _dbService = DatabaseService();
+  final Auth _auth = Auth();
+  
+  Map<String, dynamic>? _userProfile;
+  List<Map<String, dynamic>> _teachingCourses = [];
+  List<Map<String, dynamic>> _learningCourses = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      // Load user profile from database
+      final profile = await _dbService.getUserProfile(user.uid);
+      
+      // Load courses
+      final teaching = await _dbService.getCoursesByCreator(user.uid);
+      final learning = await _dbService.getEnrolledCourses(user.uid);
+      
+      // Update credits notifier
+      if (profile != null) {
+        totalCreditsNotifier.value = profile['credits'] ?? 0;
+      }
+
+      setState(() {
+        _userProfile = profile;
+        _teachingCourses = teaching;
+        _learningCourses = learning.map((e) {
+          final course = e['courses'] as Map<String, dynamic>?;
+          return course ?? <String, dynamic>{};
+        }).toList();
+      });
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = _auth.currentUser;
+    
+    return RefreshIndicator(
+      onRefresh: _loadProfile,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            // Profile Header
+            _buildProfileHeader(user),
+            const SizedBox(height: 24),
+            // Credits Balance
+            _buildCreditsCard(),
+            const SizedBox(height: 24),
+            // Bio Section
+            if (_userProfile?['bio'] != null && _userProfile!['bio'].toString().isNotEmpty)
+              _buildBioSection(),
+            // Skills/Interests Section
+            if (_userProfile?['skills'] != null || _userProfile?['subjects_teach'] != null)
+              _buildSkillsSection(),
+            const SizedBox(height: 24),
+            // Courses Teaching
+            if (_teachingCourses.isNotEmpty) _buildCoursesSection('Teaching', _teachingCourses),
+            // Courses Learning
+            if (_learningCourses.isNotEmpty) _buildCoursesSection('Learning', _learningCourses),
+            const SizedBox(height: 24),
+            // Settings Card
+            _buildSettingsCard(),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(user) {
+    final photoUrl = _userProfile?['photo_url']?.toString() ?? user?.photoURL;
+    final fullName = _userProfile?['full_name']?.toString() ?? user?.displayName ?? 'User';
+    final email = _userProfile?['email']?.toString() ?? user?.email ?? 'No email';
+
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            photoUrl != null && photoUrl.isNotEmpty
+                ? Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: DecorationImage(
+                        image: NetworkImage(photoUrl),
+                        fit: BoxFit.cover,
                       ),
-                    )
-                  : Container(
-                      width: 110,
-                      height: 110,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey.shade300,
-                        border: Border.all(
-                          color: const Color(0xFF167F71),
-                          width: 4,
-                        ),
+                      border: Border.all(
+                        color: const Color(0xFF167F71),
+                        width: 4,
                       ),
-                      child: Center(
-                        child: Text(
-                          (user?.displayName != null &&
-                                  user!.displayName!.isNotEmpty)
-                              ? user.displayName![0].toUpperCase()
-                              : 'U',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            color: Colors.white,
-                          ),
+                    ),
+                  )
+                : Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.shade300,
+                      border: Border.all(
+                        color: const Color(0xFF167F71),
+                        width: 4,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          fontSize: 36,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-              Container(
+                  ),
+            GestureDetector(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SetupProfilePage()),
+                );
+                if (result == true) {
+                  _loadProfile();
+                }
+              },
+              child: Container(
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
@@ -67,88 +161,158 @@ class ProfileView extends StatelessWidget {
                 ),
                 child: const Icon(Icons.edit, size: 18),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          Text(
-            user?.displayName ?? 'User',
-            style: const TextStyle(
-              fontSize: 24,
-              fontFamily: 'Jost',
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF202244),
             ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          fullName,
+          style: const TextStyle(
+            fontSize: 24,
+            fontFamily: 'Jost',
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF202244),
           ),
-
-          const SizedBox(height: 4),
-
-          Text(
-            user?.email ?? 'No email',
-            style: const TextStyle(
-              fontSize: 13,
-              fontFamily: 'Mulish',
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF545454),
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          email,
+          style: const TextStyle(
+            fontSize: 13,
+            fontFamily: 'Mulish',
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF545454),
           ),
+        ),
+      ],
+    );
+  }
 
-          const SizedBox(height: 24),
-
-          // White Card
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x14000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                profileItem(Icons.person, 'Edit Profile'),
-                profileItem(Icons.credit_card, 'Payment Option'),
-                profileItem(Icons.notifications, 'Notifications'),
-                profileItem(Icons.security, 'Security'),
-
-                profileItem(
-                  Icons.language,
-                  'Language',
-                  trailing: const Text(
-                    'English (US)',
-                    style: TextStyle(
+  Widget _buildCreditsCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ValueListenableBuilder<int>(
+        valueListenable: totalCreditsNotifier,
+        builder: (context, credits, _) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Column(
+                children: [
+                  const Icon(Icons.account_balance_wallet, color: Color(0xFF0961F5), size: 32),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$credits',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                       color: Color(0xFF0961F5),
-                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
+                  const Text(
+                    'Credits',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF545454),
+                    ),
+                  ),
+                ],
+              ),
+              Container(width: 1, height: 50, color: Colors.grey.shade300),
+              Column(
+                children: [
+                  const Icon(Icons.school, color: Color(0xFF167F71), size: 32),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_teachingCourses.length}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF167F71),
+                    ),
+                  ),
+                  const Text(
+                    'Teaching',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF545454),
+                    ),
+                  ),
+                ],
+              ),
+              Container(width: 1, height: 50, color: Colors.grey.shade300),
+              Column(
+                children: [
+                  const Icon(Icons.book, color: Color(0xFFFF6B00), size: 32),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_learningCourses.length}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFF6B00),
+                    ),
+                  ),
+                  const Text(
+                    'Learning',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF545454),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
-                profileItem(Icons.dark_mode, 'Dark Mode'),
-                profileItem(Icons.description, 'Terms & Conditions'),
-                profileItem(Icons.help_center, 'Help Center'),
-                profileItem(Icons.group, 'Invite Friends'),
-
-                profileItem(
-                  Icons.logout,
-                  'Logout',
-                  color: Colors.red,
-                  onTap: () async {
-                    await Auth().signOut();
-                    if (!context.mounted) return;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => LoginPage()),
-                    );
-                  },
-                ),
-              ],
+  Widget _buildBioSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bio',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _userProfile!['bio'],
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 14,
+              height: 1.5,
             ),
           ),
         ],
@@ -156,7 +320,193 @@ class ProfileView extends StatelessWidget {
     );
   }
 
-  Widget profileItem(
+  Widget _buildSkillsSection() {
+    final subjects = _userProfile?['subjects_teach'] as List<dynamic>? ?? [];
+    final skills = _userProfile?['skills'] as List<dynamic>? ?? [];
+
+    if (subjects.isEmpty && skills.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (subjects.isNotEmpty) ...[
+            const Text(
+              'Subjects Teaching',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: subjects.map((subject) {
+                return Chip(
+                  label: Text(subject.toString()),
+                  backgroundColor: const Color(0xFFE8F1FF),
+                );
+              }).toList(),
+            ),
+            if (skills.isNotEmpty) const SizedBox(height: 20),
+          ],
+          if (skills.isNotEmpty) ...[
+            const Text(
+              'Skills & Interests',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: skills.map((skill) {
+                return Chip(
+                  label: Text(skill.toString()),
+                  backgroundColor: const Color(0xFFE8F1FF),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoursesSection(String title, List<Map<String, dynamic>> courses) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Courses $title (${courses.length})',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...courses.take(3).map((course) {
+            return ListTile(
+              leading: course['thumbnail_url'] != null &&
+                      course['thumbnail_url'].toString().isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        course['thumbnail_url'],
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.book),
+                    ),
+              title: Text(course['title'] ?? 'Untitled'),
+              subtitle: Text(course['subject'] ?? ''),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CourseDetailPage(course: course),
+                  ),
+                );
+              },
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _profileItem(
+            Icons.person,
+            'Edit Profile',
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SetupProfilePage()),
+              );
+              if (result == true) {
+                _loadProfile();
+              }
+            },
+          ),
+          _profileItem(Icons.notifications, 'Notifications'),
+          _profileItem(Icons.security, 'Security'),
+          _profileItem(Icons.help_center, 'Help Center'),
+          _profileItem(
+            Icons.logout,
+            'Logout',
+            color: Colors.red,
+            onTap: () async {
+              await _auth.signOut();
+              if (!mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileItem(
     IconData icon,
     String title, {
     Widget? trailing,

@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:et_learn/helpers/credits.dart';
+import 'package:et_learn/authentication/auth.dart';
+import 'package:et_learn/services/database_service.dart';
+import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
 
+/// Inbox Screen with Requests and Messaging
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
 
@@ -10,120 +14,172 @@ class InboxScreen extends StatefulWidget {
 }
 
 class _InboxScreenState extends State<InboxScreen> {
+  final DatabaseService _dbService = DatabaseService();
+  final Auth _auth = Auth();
+  
   bool isRequestsTab = true;
-
   List<Map<String, dynamic>> requests = [];
-  final supabase = Supabase.instance.client;
-  final String uid = FirebaseAuth.instance.currentUser!.uid;
+  List<Map<String, dynamic>> conversations = [];
+  bool loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadRequests();
+    _loadData();
   }
 
-  /// Load pending requests for courses the teacher owns
-  Future<void> _loadRequests() async {
-    List<Map<String, dynamic>> loadedRequests = [];
+  Future<void> _loadData() async {
+    await Future.wait([
+      _loadCredits(),
+      _loadRequests(),
+      _loadConversations(),
+    ]);
+  }
+
+  Future<void> _loadCredits() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
 
     try {
-      final response = await supabase
-          .from('offers')
-          .select('''
-            id,
-            uid,
-            subject,
-            description,
-            available_times,
-            status,
-            users ( full_name, photo_url )
-          ''')
-          .eq('type', 'learn')
-          .eq('status', 'open');
-
-      // Only requests where the subject matches one of teacher's subjects
-      final teacherData = await supabase
-          .from('users')
-          .select('subjects_teach')
-          .eq('uid', uid)
-          .maybeSingle();
-
-      final List<String> subjectsTeach =
-          List<String>.from(teacherData?['subjects_teach'] ?? []);
-
-      final filteredRequests = (response as List)
-          .where((r) => subjectsTeach.contains(r['subject']))
-          .toList();
-
-      loadedRequests.addAll(filteredRequests.cast<Map<String, dynamic>>());
+      final credits = await _dbService.getUserCredits(user.uid);
+      totalCreditsNotifier.value = credits;
     } catch (e) {
-      debugPrint('Error fetching requests: $e');
+      debugPrint('Error loading credits: $e');
     }
-
-    // Add one demo request for testing if empty
-    if (loadedRequests.isEmpty) {
-      loadedRequests.add({
-        'id': 0,
-        'uid': 'demo',
-        'subject': 'Demo Subject',
-        'description': 'This is a demo request for testing',
-        'available_times': ['Anytime'],
-        'status': 'open',
-        'users': {'full_name': 'Demo Student', 'photo_url': null},
-      });
-    }
-
-    setState(() {
-      requests = loadedRequests;
-    });
   }
 
-  /// Accept a request
-  Future<void> _acceptRequest(int offerId) async {
-    if (offerId == 0) {
-      // Demo request: just remove from UI
-      setState(() => requests.removeWhere((r) => r['id'] == 0));
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Demo request accepted!')));
+  Future<void> _loadRequests() async {
+    setState(() => loading = true);
+    final user = _auth.currentUser;
+    if (user == null) {
+      setState(() => loading = false);
       return;
     }
 
     try {
-      await supabase
-          .from('offers')
-          .update({'status': 'accepted'})
-          .eq('id', offerId);
+      final mentorRequests = await _dbService.getMentorRequests(user.uid);
+      setState(() {
+        requests = mentorRequests;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading requests: $e');
+      setState(() => loading = false);
+    }
+  }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Request accepted!')));
+  Future<void> _loadConversations() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
 
-      _loadRequests();
+    try {
+      final convos = await _dbService.getConversations(user.uid);
+      setState(() {
+        conversations = convos;
+      });
+    } catch (e) {
+      debugPrint('Error loading conversations: $e');
+    }
+  }
+
+  Future<void> _acceptRequest(Map<String, dynamic> request) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final courseId = request['course_id'] as int;
+      final learnerUid = request['learner_uid'] as String;
+      final requestId = request['id'] as int;
+
+      // Accept the request (creates enrollment)
+      await _dbService.acceptCourseRequest(requestId, learnerUid, courseId);
+
+      // Get course and learner info for meeting
+      final course = request['courses'] as Map<String, dynamic>?;
+      final learner = request['users'] as Map<String, dynamic>?;
+      
+      if (course != null && learner != null) {
+        // Start video meeting with 5 second delay
+        await _startVideoMeeting(
+          course: course,
+          learnerName: learner['full_name'] ?? 'Student',
+          learnerUid: learnerUid,
+        );
+      }
+
+      // Reload requests
+      await _loadRequests();
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request accepted! Video meeting starting...')),
+      );
     } catch (e) {
       debugPrint('Error accepting request: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
     }
   }
 
-  /// Decline a request
-  Future<void> _declineRequest(int offerId) async {
-    if (offerId == 0) {
-      setState(() => requests.removeWhere((r) => r['id'] == 0));
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Demo request declined!')));
-      return;
-    }
+  Future<void> _startVideoMeeting({
+    required Map<String, dynamic> course,
+    required String learnerName,
+    required String learnerUid,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
 
+    // Create unique room name
+    final roomName = 'ETLearn_${course['id']}_${DateTime.now().millisecondsSinceEpoch}';
+    
+    // Show notification that meeting will start in 5 seconds
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Video meeting will start in 5 seconds...'),
+        duration: Duration(seconds: 5),
+      ),
+    );
+
+    // Wait 5 seconds before starting
+    await Future.delayed(const Duration(seconds: 5));
+
+    if (!mounted) return;
+
+    // Start Jitsi meeting
     try {
-      await supabase
-          .from('offers')
-          .update({'status': 'declined'})
-          .eq('id', offerId);
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Request declined!')));
-
-      _loadRequests();
+      await JitsiMeetWrapper.joinMeeting(
+        options: JitsiMeetingOptions(
+          roomNameOrUrl: roomName,
+          userDisplayName: user.displayName ?? 'Mentor',
+        ),
+      );
     } catch (e) {
-      debugPrint('Error declining request: $e');
+      debugPrint('Error starting Jitsi meeting: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error starting meeting: ${e.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _rejectRequest(int requestId) async {
+    try {
+      await _dbService.rejectCourseRequest(requestId);
+      await _loadRequests();
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request rejected. Requester notified.')),
+      );
+    } catch (e) {
+      debugPrint('Error rejecting request: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
     }
   }
 
@@ -134,14 +190,19 @@ class _InboxScreenState extends State<InboxScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
-          'Inbox',
-          style: TextStyle(
-            color: Color(0xFF202244),
-            fontFamily: 'Jost',
-            fontSize: 21,
-            fontWeight: FontWeight.w600,
-          ),
+        title: ValueListenableBuilder<int>(
+          valueListenable: totalCreditsNotifier,
+          builder: (context, totalCredits, _) {
+            return Text(
+              'Inbox • $totalCredits credits',
+              style: const TextStyle(
+                color: Color(0xFF202244),
+                fontFamily: 'Jost',
+                fontSize: 21,
+                fontWeight: FontWeight.w600,
+              ),
+            );
+          },
         ),
       ),
       body: Padding(
@@ -162,7 +223,10 @@ class _InboxScreenState extends State<InboxScreen> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () => setState(() => isRequestsTab = true),
-                    child: _TabButton(title: 'Requests', selected: isRequestsTab),
+                    child: _TabButton(
+                      title: 'Requests',
+                      selected: isRequestsTab,
+                    ),
                   ),
                 ),
               ],
@@ -184,33 +248,8 @@ class _InboxScreenState extends State<InboxScreen> {
                   ],
                 ),
                 child: isRequestsTab
-                    ? requests.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'No pending requests',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: requests.length,
-                            itemBuilder: (context, index) {
-                              final req = requests[index];
-                              final user = req['users'];
-                              return RequestTile(
-                                requesterName: user?['full_name'] ?? 'Unknown',
-                                subject: req['subject'],
-                                description: req['description'] ?? '',
-                                onAccept: () => _acceptRequest(req['id']),
-                                onDeny: () => _declineRequest(req['id']),
-                              );
-                            },
-                          )
-                    : const Center(
-                        child: Text(
-                          'Chat screen here...',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
+                    ? _buildRequestsTab()
+                    : _buildChatTab(),
               ),
             ),
           ],
@@ -218,8 +257,78 @@ class _InboxScreenState extends State<InboxScreen> {
       ),
     );
   }
+
+  Widget _buildRequestsTab() {
+    if (loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (requests.isEmpty) {
+      return const Center(
+        child: Text(
+          'No pending requests',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadRequests,
+      child: ListView.builder(
+        itemCount: requests.length,
+        itemBuilder: (context, index) {
+          final request = requests[index];
+          final course = request['courses'] as Map<String, dynamic>?;
+          final learner = request['users'] as Map<String, dynamic>?;
+          final status = request['status'] as String? ?? 'pending';
+
+          return _RequestTile(
+            request: request,
+            courseTitle: course?['title'] ?? 'Unknown Course',
+            learnerName: learner?['full_name'] ?? 'Unknown',
+            status: status,
+            onAccept: status == 'pending' ? () => _acceptRequest(request) : null,
+            onReject: status == 'pending'
+                ? () => _rejectRequest(request['id'] as int)
+                : null,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildChatTab() {
+    if (conversations.isEmpty) {
+      return const Center(
+        child: Text(
+          'No conversations yet',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadConversations,
+      child: ListView.builder(
+        itemCount: conversations.length,
+        itemBuilder: (context, index) {
+          final conversation = conversations[index];
+          return _ConversationTile(
+            conversation: conversation,
+            onTap: () {
+              // Navigate to chat screen (can be implemented later)
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Chat feature coming soon')),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 }
 
+/// Tab button widget
 class _TabButton extends StatelessWidget {
   final String title;
   final bool selected;
@@ -248,78 +357,175 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-class RequestTile extends StatelessWidget {
-  final String requesterName;
-  final String subject;
-  final String description;
-  final VoidCallback onAccept;
-  final VoidCallback onDeny;
+/// Request tile widget
+class _RequestTile extends StatelessWidget {
+  final Map<String, dynamic> request;
+  final String courseTitle;
+  final String learnerName;
+  final String status;
+  final VoidCallback? onAccept;
+  final VoidCallback? onReject;
 
-  const RequestTile({
-    super.key,
-    required this.requesterName,
-    required this.subject,
-    required this.description,
-    required this.onAccept,
-    required this.onDeny,
+  const _RequestTile({
+    required this.request,
+    required this.courseTitle,
+    required this.learnerName,
+    required this.status,
+    this.onAccept,
+    this.onReject,
   });
 
   @override
   Widget build(BuildContext context) {
+    final course = request['courses'] as Map<String, dynamic>?;
+    final creditCost = course?['credit_cost'] ?? 0;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            requesterName,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF202244),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$subject • $description',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF545454),
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: ElevatedButton(
-                  onPressed: onAccept,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF167F71),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      learnerName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF202244),
+                      ),
                     ),
-                  ),
-                  child: const Text('Accept'),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$courseTitle • $creditCost credits',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF545454),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: onDeny,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF44336),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Decline'),
-                ),
-              ),
+              _StatusChip(status: status),
             ],
           ),
+          if (status == 'pending' && (onAccept != null || onReject != null)) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (onAccept != null)
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onAccept,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF167F71),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Accept'),
+                    ),
+                  ),
+                if (onAccept != null && onReject != null)
+                  const SizedBox(width: 12),
+                if (onReject != null)
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onReject,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF44336),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Reject'),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// Status chip widget
+class _StatusChip extends StatelessWidget {
+  final String status;
+
+  const _StatusChip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String text;
+    
+    switch (status) {
+      case 'accepted':
+        color = Colors.green;
+        text = 'Accepted';
+        break;
+      case 'rejected':
+        color = Colors.red;
+        text = 'Rejected';
+        break;
+      default:
+        color = Colors.orange;
+        text = 'Pending';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
+/// Conversation tile widget
+class _ConversationTile extends StatelessWidget {
+  final Map<String, dynamic> conversation;
+  final VoidCallback onTap;
+
+  const _ConversationTile({
+    required this.conversation,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage: conversation['photo_url'] != null &&
+                conversation['photo_url'].toString().isNotEmpty
+            ? NetworkImage(conversation['photo_url'])
+            : null,
+        child: conversation['photo_url'] == null ||
+                conversation['photo_url'].toString().isEmpty
+            ? const Icon(Icons.person)
+            : null,
+      ),
+      title: Text(conversation['full_name'] ?? 'Unknown'),
+      subtitle: Text(conversation['bio']?.toString() ?? ''),
+      onTap: onTap,
     );
   }
 }

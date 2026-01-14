@@ -1,7 +1,7 @@
-import 'package:et_learn/authentication/login_page.dart';
 import 'package:flutter/material.dart';
-import 'auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'auth.dart';
+import 'package:et_learn/screens/registration_success_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -11,37 +11,97 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
-  String? errorMessage = "";
+  // NON-nullable error message to prevent crashes
+  String errorMessage = "";
 
   final TextEditingController _controllerEmail = TextEditingController();
   final TextEditingController _controllerPassword = TextEditingController();
   final TextEditingController _controllerConfirmPassword =
       TextEditingController();
 
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  // Password strength flags
+  bool hasUpper = false;
+  bool hasLower = false;
+  bool hasNumber = false;
+  bool hasSpecial = false;
+  bool hasMinLength = false;
+
+  // Check password strength live
+  void _checkPassword(String value) {
+    setState(() {
+      hasUpper = value.contains(RegExp(r'[A-Z]'));
+      hasLower = value.contains(RegExp(r'[a-z]'));
+      hasNumber = value.contains(RegExp(r'\d'));
+      hasSpecial = value.contains(RegExp(r'[@$!%*?&]'));
+      hasMinLength = value.length >= 8;
+    });
+  }
+
+  bool get isPasswordStrong =>
+      hasUpper && hasLower && hasNumber && hasSpecial && hasMinLength;
+
+  // Create user function
   Future<void> createUserWithEmailAndPassword() async {
-    if (_controllerConfirmPassword.text == _controllerPassword.text) {
-      try {
-        await Auth().createUserWithEmailAndPassword(
-          email: _controllerEmail.text,
-          password: _controllerPassword.text,
-        );
-
-        if (!mounted) return;
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-        );
-      } on FirebaseAuthException catch (e) {
-        setState(() {
-          errorMessage = e.message;
-        });
-      }
-    } else {
+    // Check password strength first
+    if (!isPasswordStrong) {
       setState(() {
-        errorMessage = "Passwords doesn't match";
+        errorMessage =
+            "Password does not meet security requirements. Check the indicators below.";
+      });
+      return;
+    }
+
+    // Check if passwords match
+    if (_controllerPassword.text != _controllerConfirmPassword.text) {
+      setState(() {
+        errorMessage = "Passwords don't match";
+      });
+      return;
+    }
+
+    try {
+      await Auth().createUserWithEmailAndPassword(
+        email: _controllerEmail.text,
+        password: _controllerPassword.text,
+      );
+
+      if (!mounted) return;
+
+      // Navigate to success page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const RegistrationSuccessPage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        // Provide default message if null
+        errorMessage = e.message ?? "Something went wrong. Please try again.";
       });
     }
+  }
+
+  // Password rule row widget
+  Widget _passwordRule(String text, bool valid) {
+    return Row(
+      children: [
+        Icon(
+          valid ? Icons.check_circle : Icons.cancel,
+          size: 16,
+          color: valid ? Colors.green : Colors.grey,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: valid ? Colors.green : Colors.grey,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -49,119 +109,117 @@ class _SignupPageState extends State<SignupPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "Sign up",
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+          "Sign Up",
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
         ),
       ),
       body: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Email field
+            const Text("Email", style: TextStyle(color: Color(0XFF858597))),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _controllerEmail,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'example@email.com',
+              ),
+            ),
 
-        child: Container(
-          padding: EdgeInsets.all(8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Full name",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0XFF858597),
-                ),
-              ),
-              TextField(
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Daniel Kebede',
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  "Your  Email",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0XFF858597),
+            const SizedBox(height: 12),
+
+            // Password field
+            const Text("Password", style: TextStyle(color: Color(0XFF858597))),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _controllerPassword,
+              obscureText: _obscurePassword,
+              onChanged: _checkPassword,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                hintText: '********',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
                   ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
                 ),
+                // ONLY include errorText if you want it displayed inside the field
+                errorText:
+                    !isPasswordStrong && _controllerPassword.text.isNotEmpty
+                    ? "Password is weak"
+                    : null,
               ),
-              TextField(
-                controller: _controllerEmail,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'DaniKebede@gmail.com',
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.only(top: 10),
-                child: Text(
-                  "Password",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0XFF858597),
+            ),
+
+            const SizedBox(height: 8),
+            _passwordRule("At least 8 characters", hasMinLength),
+            _passwordRule("Uppercase letter", hasUpper),
+            _passwordRule("Lowercase letter", hasLower),
+            _passwordRule("Number", hasNumber),
+            _passwordRule("Special character (@\$!%*?&)", hasSpecial),
+
+            const SizedBox(height: 12),
+
+            // Confirm password
+            const Text(
+              "Confirm Password",
+              style: TextStyle(color: Color(0XFF858597)),
+            ),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _controllerConfirmPassword,
+              obscureText: _obscureConfirmPassword,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                hintText: '********',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
                   ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                    });
+                  },
                 ),
               ),
-              TextField(
-                obscureText: true,
-                controller: _controllerPassword,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: '............',
-                ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Error message
+            Center(
+              child: Text(
+                errorMessage,
+                style: const TextStyle(color: Colors.red),
               ),
-              Container(
-                padding: EdgeInsets.only(top: 10),
-                child: Text(
-                  "Confirm password",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0XFF858597),
-                  ),
-                ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Sign Up button
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3D5CFF),
+                minimumSize: const Size(double.infinity, 51),
               ),
-              TextField(
-                obscureText: true,
-                controller: _controllerConfirmPassword,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: '............',
-                ),
+              onPressed: createUserWithEmailAndPassword,
+              child: const Text(
+                "Sign Up",
+                style: TextStyle(fontSize: 16, color: Colors.white),
               ),
-              Container(
-                padding: EdgeInsets.only(top: 10),
-                child: Center(
-                  child: Text(
-                    errorMessage == "" ? "" : "$errorMessage",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.red,
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 10.0),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF3D5CFF),
-                    foregroundColor: Colors.white,
-                    minimumSize: Size(double.infinity, 51),
-                  ),
-                  onPressed: createUserWithEmailAndPassword,
-                  child: Text(
-                    "Sign Up",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

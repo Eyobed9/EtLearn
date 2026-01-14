@@ -1,0 +1,18 @@
+[33m2b2754f[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m chore: add local copy of jitsi_meet_wrapper plugin
+[33m5ce1915[m feature: create_course_page implemented
+[33m30edc1e[m[33m ([m[1;31morigin/main[m[33m)[m credits for meetings implemented
+[33m28b7f18[m feature: inbox fixed based on requests
+[33mf9d554d[m feature: authetication with flutter connected to supabase
+[33m1555726[m feature: connected to supabase
+[33md1eaedc[m feature: users, session and offers tables complete
+[33m88dfafd[m feature: added supabase to the project
+[33ma8b7af6[m search page added
+[33mc23b321[m feature: inbox page created
+[33mdcb6de1[m feature: my courses page created
+[33m66906f8[m feature: profile page created
+[33mb6fb0d8[m feature:home page implementation
+[33mc055c7e[m feature: onboarding pages complete
+[33m632abef[m feature: opening modal complete
+[33m7cd6ec4[m feature: Login and sign up successfully connected with firebase
+[33mcb1591d[m Login and sign up page created
+[33m899b2ab[m App first progress

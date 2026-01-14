@@ -109,7 +109,7 @@ class _MeetingState extends State<Meeting> {
               ),
               style: ButtonStyle(
                 backgroundColor:
-                    MaterialStateColor.resolveWith((states) => Colors.blue),
+                    WidgetStateColor.resolveWith((states) => Colors.blue),
               ),
             ),
           ),

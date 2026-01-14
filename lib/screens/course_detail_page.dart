@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:et_learn/authentication/auth.dart';
+import 'package:et_learn/services/database_service.dart';
+import 'package:et_learn/services/user_sync_service.dart';
+import 'package:et_learn/screens/setup_profile.dart';
 
 class CourseDetailPage extends StatefulWidget {
   final Map course;
@@ -11,31 +14,64 @@ class CourseDetailPage extends StatefulWidget {
 }
 
 class _CourseDetailPageState extends State<CourseDetailPage> {
-  final supabase = Supabase.instance.client;
+  final DatabaseService _dbService = DatabaseService();
+  final Auth _auth = Auth();
   bool sendingRequest = false;
 
-  Future<void> sendRequest() async {
-    setState(() => sendingRequest = true);
+  Future<void> _checkProfileAndRequest() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to request a course')),
+      );
+      return;
+    }
 
-    final user = supabase.auth.currentUser;
+    // Check if user has a complete profile
+    final needsSetup = await UserSyncService.needsProfileSetup(user);
+    if (needsSetup) {
+      // Navigate to profile setup
+      if (!mounted) return;
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SetupProfilePage()),
+      );
+      
+      // If user completed setup, try again
+      if (result == true) {
+        await _sendRequest();
+      }
+      return;
+    }
+
+    await _sendRequest();
+  }
+
+  Future<void> _sendRequest() async {
+    final user = _auth.currentUser;
     if (user == null) return;
 
-    try {
-      await supabase.from('offers').insert({
-        'uid': user.id,
-        'type': 'learn',
-        'subject': widget.course['subject'],
-        'description':
-            'Request to learn "${widget.course['title']}"',
-        'status': 'open',
-      });
+    setState(() => sendingRequest = true);
 
+    try {
+      final courseId = widget.course['id'] as int;
+      final mentorUid = widget.course['creator_uid'] as String;
+
+      await _dbService.createCourseRequest(
+        courseId: courseId,
+        learnerUid: user.uid,
+        mentorUid: mentorUid,
+      );
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request sent successfully')),
+        const SnackBar(content: Text('Request to learn sent successfully!')),
       );
     } catch (e) {
+      debugPrint('Error sending request: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error: ${e.toString()}')),
       );
     }
 
@@ -45,96 +81,213 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
   @override
   Widget build(BuildContext context) {
     final course = widget.course;
-    final teacher = course['users'];
-    final currentUser = supabase.auth.currentUser;
 
-    final bool isOwner = currentUser?.id == course['creator_uid'];
+    // Safely handle teacher info
+    final teacher = course['users'] is Map<String, dynamic>
+        ? course['users'] as Map<String, dynamic>
+        : null;
+
+    final currentUser = _auth.currentUser;
+    final bool isOwner = currentUser?.uid == course['creator_uid'];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Course Details'),
-      ),
+      appBar: AppBar(title: const Text('Course Details')),
       body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thumbnail
-            course['thumbnail_url'] != null
-                ? Image.network(
-                    course['thumbnail_url'],
-                    height: 220,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  )
-                : Container(
-                    height: 220,
-                    color: Colors.grey.shade300,
-                    child: const Center(child: Icon(Icons.image, size: 50)),
-                  ),
-
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    course['title'],
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-
-                  const SizedBox(height: 8),
-                  Text(
-                    'By ${teacher?['full_name'] ?? 'Unknown'}',
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Row(
-                    children: [
-                      Chip(label: Text(course['subject'])),
-                      const SizedBox(width: 8),
-                      Chip(label: Text(course['level'])),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-                  Text('⏱ Duration: ${course['duration_minutes']} minutes'),
-
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Description',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(course['description'] ?? 'No description'),
-
-                  const SizedBox(height: 30),
-
-                  if (!isOwner)
-                    SizedBox(
+        child: Container(
+          width: double.infinity,
+          color: const Color(0xFFF4F8FE),
+          child: Column(
+            children: [
+              // Top banner / thumbnail
+              course['thumbnail_url'] != null && course['thumbnail_url'] != ''
+                  ? Image.network(
+                      course['thumbnail_url'],
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: sendingRequest ? null : sendRequest,
+                      height: 250,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: double.infinity,
+                      height: 250,
+                      color: Colors.grey.shade300,
+                      child: const Center(child: Icon(Icons.image, size: 50)),
+                    ),
+
+              // Course info card
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course['subject'] ?? 'No Subject',
+                      style: const TextStyle(
+                        color: Color(0xFFFF6B00),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      course['title'] ?? 'Untitled Course',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Text(
+                          '${course['classes'] ?? 0} Classes',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          '|',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${course['duration_minutes'] ?? 0} Minutes',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${course['credit_cost'] ?? 'Free'} /-',
+                      style: const TextStyle(
+                        color: Color(0xFF0961F5),
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: const [
+                        Text(
+                          'About',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          'Curriculum',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      course['description'] ?? 'No description',
+                      style: const TextStyle(
+                        color: Color(0xFFA0A4AB),
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Instructor section
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 27,
+                      backgroundImage:
+                          teacher != null && teacher['photo_url'] != null
+                          ? NetworkImage(teacher['photo_url'])
+                          : const AssetImage('assets/avatar_placeholder.png')
+                                as ImageProvider,
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          teacher?['full_name'] ?? 'Unknown',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          course['subject'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF545454),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Request button or owner info
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: isOwner
+                    ? const Text(
+                        'You are the owner of this course',
+                        style: TextStyle(color: Colors.grey),
+                      )
+                    : ElevatedButton(
+                        onPressed: sendingRequest ? null : _checkProfileAndRequest,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF167F71),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
                         child: sendingRequest
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
-                            : const Text('Request Session'),
+                            : const Text(
+                                'Request to Learn',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
-                    ),
-
-                  if (isOwner)
-                    const Text(
-                      'You are the owner of this course',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );

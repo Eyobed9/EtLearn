@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:et_learn/widget_tree.dart';
 
 class SetupProfilePage extends StatefulWidget {
   const SetupProfilePage({super.key});
@@ -68,12 +67,9 @@ class _SetupProfilePageState extends State<SetupProfilePage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Profile setup completed')));
-      // After successful setup, send user to the app home.
+      // Return true to indicate successful setup
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const WidgetTree()),
-      );
+      Navigator.pop(context, true);
     }
   }
 
@@ -181,7 +177,7 @@ class _SetupProfilePageState extends State<SetupProfilePage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
-        value: gender,
+        initialValue: gender,
         items: [
           'Male',
           'Female',

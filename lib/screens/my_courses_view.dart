@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:et_learn/authentication/auth.dart';
+import 'package:et_learn/services/database_service.dart';
+import 'package:et_learn/screens/course_detail_page.dart';
 
 enum CourseTabType { learning, teaching }
 
@@ -10,7 +13,50 @@ class MyCoursesView extends StatefulWidget {
 }
 
 class _MyCoursesViewState extends State<MyCoursesView> {
+  final DatabaseService _dbService = DatabaseService();
+  final Auth _auth = Auth();
+
   CourseTabType selectedTab = CourseTabType.learning;
+
+  List<Map<String, dynamic>> learningCourses = [];
+  List<Map<String, dynamic>> teachingCourses = [];
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCourses();
+  }
+
+  Future<void> fetchCourses() async {
+    setState(() => loading = true);
+
+    final user = _auth.currentUser;
+    if (user == null) {
+      setState(() => loading = false);
+      return;
+    }
+
+    try {
+      // 1️⃣ Fetch courses the user is learning (via enrollments)
+      final enrolledCourses = await _dbService.getEnrolledCourses(user.uid);
+      learningCourses = enrolledCourses.map((e) {
+        final course = e['courses'] as Map<String, dynamic>?;
+        if (course == null) return <String, dynamic>{};
+        return {
+          ...course,
+          'progress': ((e['progress_percentage'] ?? 0) as int) / 100.0,
+        };
+      }).toList();
+
+      // 2️⃣ Fetch courses the user is teaching (creator_uid)
+      teachingCourses = await _dbService.getCoursesByCreator(user.uid);
+    } catch (e) {
+      debugPrint('Error fetching courses: $e');
+    }
+
+    setState(() => loading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +64,7 @@ class _MyCoursesViewState extends State<MyCoursesView> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView(
         children: [
-          // Top padding
           const Padding(padding: EdgeInsets.only(top: 8)),
-
-          // Title
           const Padding(
             padding: EdgeInsets.only(top: 8.0, bottom: 12.0),
             child: Text(
@@ -34,23 +77,15 @@ class _MyCoursesViewState extends State<MyCoursesView> {
               ),
             ),
           ),
-
-          // Search box
           _searchBox(),
-
-          // Padding
           const Padding(padding: EdgeInsets.only(top: 20)),
-
-          // Tabs
           Row(
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedTab = CourseTabType.learning;
-                    });
-                  },
+                  onTap: () => setState(() {
+                    selectedTab = CourseTabType.learning;
+                  }),
                   child: _CourseTab(
                     title: 'Learning',
                     selected: selectedTab == CourseTabType.learning,
@@ -60,11 +95,9 @@ class _MyCoursesViewState extends State<MyCoursesView> {
               const Padding(padding: EdgeInsets.only(left: 12)),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedTab = CourseTabType.teaching;
-                    });
-                  },
+                  onTap: () => setState(() {
+                    selectedTab = CourseTabType.teaching;
+                  }),
                   child: _CourseTab(
                     title: 'Teaching',
                     selected: selectedTab == CourseTabType.teaching,
@@ -73,21 +106,81 @@ class _MyCoursesViewState extends State<MyCoursesView> {
               ),
             ],
           ),
-
-          // Padding
           const Padding(padding: EdgeInsets.only(top: 20)),
-
-          // Dynamic content
-          if (selectedTab == CourseTabType.learning)
-            ..._learningCourses()
+          if (loading)
+            const Center(child: CircularProgressIndicator())
+          else if (selectedTab == CourseTabType.learning)
+            learningCourses.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Text(
+                        'No courses you\'re learning yet',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: learningCourses.map((course) => GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CourseDetailPage(course: course),
+                              ),
+                            );
+                          },
+                          child: CourseCard(
+                            category: course['subject'] ?? 'Unknown',
+                            title: course['title'] ?? '',
+                            rating: '⭐',
+                            duration:
+                                '${(course['duration_minutes'] ?? 0) ~/ 60} Hrs ${(course['duration_minutes'] ?? 0) % 60} Mins',
+                            progress: course['progress'] ?? 0.0,
+                            progressText:
+                                '${((course['progress'] ?? 0.0) * 100).toInt()}%',
+                            progressColor: const Color(0xFF167F71),
+                          ),
+                        )).toList(),
+                  )
           else
-            ..._teachingCourses(),
+            teachingCourses.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Text(
+                        'No courses you\'re teaching yet',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: teachingCourses.map((course) => GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CourseDetailPage(course: course),
+                              ),
+                            );
+                          },
+                          child: CourseCard(
+                            category: course['subject'] ?? 'Unknown',
+                            title: course['title'] ?? '',
+                            rating: '⭐',
+                            duration:
+                                '${(course['duration_minutes'] ?? 0) ~/ 60} Hrs ${(course['duration_minutes'] ?? 0) % 60} Mins',
+                            progress: 0.0,
+                            progressText: '0%',
+                            progressColor: const Color(0xFFFCCB40),
+                          ),
+                        )).toList(),
+                  ),
         ],
       ),
     );
   }
 
-  // ---------------- Search Box ----------------
   Widget _searchBox() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -127,53 +220,6 @@ class _MyCoursesViewState extends State<MyCoursesView> {
         ],
       ),
     );
-  }
-
-  // ---------------- Courses ----------------
-  List<Widget> _learningCourses() {
-    return const [
-      CourseCard(
-        category: 'UI/UX Design',
-        title: 'Intro to UI/UX Design',
-        rating: '4.4',
-        duration: '3 Hrs 06 Mins',
-        progress: 0.75,
-        progressText: '93/125',
-        progressColor: Color(0xFF167F71),
-      ),
-      CourseCard(
-        category: 'UI/UX Design',
-        title: '3D Blender and UI/UX',
-        rating: '4.6',
-        duration: '2 Hrs 46 Mins',
-        progress: 0.6,
-        progressText: '56/98',
-        progressColor: Color(0xFFFF6B00),
-      ),
-    ];
-  }
-
-  List<Widget> _teachingCourses() {
-    return const [
-      CourseCard(
-        category: 'Web Development',
-        title: 'Wordpress website Dev..',
-        rating: '3.9',
-        duration: '1 Hrs 58 Mins',
-        progress: 0.4,
-        progressText: '12/31',
-        progressColor: Color(0xFFFCCB40),
-      ),
-      CourseCard(
-        category: 'UX/UI Design',
-        title: 'Learn UX User Persona',
-        rating: '3.9',
-        duration: '1 Hrs 58 Mins',
-        progress: 0.83,
-        progressText: '29/35',
-        progressColor: Color(0xFFFCCB40),
-      ),
-    ];
   }
 }
 
