@@ -112,11 +112,15 @@ class _SetupProfilePageState extends State<SetupProfilePage> {
                 onPressed: saveProfile,
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 55),
+                  backgroundColor: const Color(0xFF0961F5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: const Text('Complete Setup'),
+                child: const Text(
+                  'Complete Setup',
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
               ),
             ],
           ),

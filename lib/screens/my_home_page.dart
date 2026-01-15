@@ -40,15 +40,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _loadFeaturedContent() async {
-    await Future.wait([
-      _fetchFeaturedCourses(),
-      _fetchFeaturedMentors(),
-    ]);
+    await Future.wait([_fetchFeaturedCourses(), _fetchFeaturedMentors()]);
   }
 
   Future<void> _fetchFeaturedCourses() async {
     try {
-      final courses = await _dbService.getFeaturedCourses(limit: 6);
+      if (user == null) {
+        setState(() => loadingCourses = false);
+        return;
+      }
+
+      final courses = await _dbService.getFeaturedCourses(
+        currentUserUid: user!.uid,
+        limit: 6,
+      );
+
       setState(() {
         featuredCourses = courses;
         loadingCourses = false;
@@ -61,9 +67,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _fetchFeaturedMentors() async {
     try {
-      final mentors = await _dbService.getFeaturedMentors(limit: 6);
+      final mentors = await _dbService.getAllMentors();
+      debugPrint('Fetched mentors: $mentors');
       setState(() {
-        featuredMentors = mentors;
+        featuredMentors = mentors.take(3).toList(); // take top 2 for homepage
         loadingMentors = false;
       });
     } catch (e) {
@@ -81,58 +88,70 @@ class _MyHomePageState extends State<MyHomePage> {
           _header(),
           _pad(_searchBar(), top: 20),
           // Featured Courses Section
-          _pad(_sectionTitle("Featured Courses", onSeeMore: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AllCoursesPage()),
-            );
-          }), top: 30),
+          _pad(
+            _sectionTitle(
+              "Featured Courses",
+              onSeeMore: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AllCoursesPage()),
+                );
+              },
+            ),
+            top: 30,
+          ),
           _pad(
             loadingCourses
                 ? const Center(child: CircularProgressIndicator())
                 : featuredCourses.isEmpty
-                    ? const Center(child: Text('No courses available'))
-                    : Column(
-                        children: featuredCourses.take(3).map((course) {
-                          // Safely get the teacher map
-                          final teacher = (course['users'] is Map<String, dynamic>)
-                              ? course['users'] as Map<String, dynamic>
-                              : null;
+                ? const Center(child: Text('No courses available'))
+                : Column(
+                    children: featuredCourses.take(3).map((course) {
+                      // Safely get the teacher map
+                      final teacher = (course['users'] is Map<String, dynamic>)
+                          ? course['users'] as Map<String, dynamic>
+                          : null;
 
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => CourseDetailPage(course: course),
-                                ),
-                              );
-                            },
-                            child: CourseCard(
-                              title: course['title']?.toString() ?? 'Untitled',
-                              subject: course['subject']?.toString() ?? '',
-                              level: course['level']?.toString() ?? 'Beginner',
-                              duration: course['duration_minutes'] ?? 0,
-                              thumbnail: course['thumbnail_url']?.toString(),
-                              teacherName:
-                                  teacher?['full_name']?.toString() ?? 'Unknown',
-                              courseId: course['id'],
-                              teacherUid: course['creator_uid']?.toString(),
-                              supabase: supabase,
-                              currentUserUid: user?.uid,
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CourseDetailPage(course: course),
                             ),
                           );
-                        }).toList(),
-                      ),
+                        },
+                        child: CourseCard(
+                          title: course['title']?.toString() ?? 'Untitled',
+                          subject: course['subject']?.toString() ?? '',
+                          level: course['level']?.toString() ?? 'Beginner',
+                          duration: course['duration_minutes'] ?? 0,
+                          thumbnail: course['thumbnail_url']?.toString(),
+                          teacherName:
+                              teacher?['full_name']?.toString() ?? 'Unknown',
+                          courseId: course['id'],
+                          teacherUid: course['creator_uid']?.toString(),
+                          supabase: supabase,
+                          currentUserUid: user?.uid,
+                        ),
+                      );
+                    }).toList(),
+                  ),
             top: 20,
           ),
           // Featured Mentors Section
-          _pad(_sectionTitle("Featured Mentors", onSeeMore: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AllMentorsPage()),
-            );
-          }), top: 30),
+          _pad(
+            _sectionTitle(
+              "Featured Mentors",
+              onSeeMore: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AllMentorsPage()),
+                );
+              },
+            ),
+            top: 30,
+          ),
           _pad(_featuredMentors(), top: 15),
         ],
       ),
@@ -142,15 +161,21 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return BaseScaffold(
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const CreateCoursePage()),
           );
         },
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          "Create Course",
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF167F71),
       ),
+
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
@@ -344,12 +369,11 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-
   Widget _featuredMentors() {
     if (loadingMentors) {
       return const Center(child: CircularProgressIndicator());
     }
-    
+
     if (featuredMentors.isEmpty) {
       return const Center(child: Text('No mentors available'));
     }
@@ -360,7 +384,8 @@ class _MyHomePageState extends State<MyHomePage> {
         scrollDirection: Axis.horizontal,
         children: [
           const SizedBox(width: 4),
-          ...featuredMentors.take(6).map((mentor) {
+          ...featuredMentors.take(2).map((mentor) {
+            // <-- only take top 2
             return Padding(
               padding: const EdgeInsets.only(right: 12),
               child: GestureDetector(
@@ -368,13 +393,15 @@ class _MyHomePageState extends State<MyHomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => MentorProfilePage(mentorUid: mentor['uid']),
+                      builder: (_) =>
+                          MentorProfilePage(mentorUid: mentor['uid']),
                     ),
                   );
                 },
                 child: MentorTile(
                   name: mentor['full_name'] ?? 'Unknown',
-                  subtitle: (mentor['subjects_teach'] as List?)?.isNotEmpty == true
+                  subtitle:
+                      (mentor['subjects_teach'] as List?)?.isNotEmpty == true
                       ? (mentor['subjects_teach'] as List).first.toString()
                       : 'Mentor',
                   photoUrl: mentor['photo_url']?.toString(),

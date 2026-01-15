@@ -4,7 +4,6 @@ import 'package:et_learn/authentication/signup_page.dart';
 import 'auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:et_learn/services/user_sync_service.dart';
-import 'package:et_learn/screens/setup_profile.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,16 +30,12 @@ class _LoginPage extends State<LoginPage> {
 
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await UserSyncService.syncFirebaseUser(user);
-        final needsSetup = await UserSyncService.needsProfileSetup(user);
         if (!mounted) return;
-        if (needsSetup) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const SetupProfilePage()),
+            MaterialPageRoute(builder: (context) => const WidgetTree()),
           );
           return;
-        }
       }
 
       if (!mounted) return;
@@ -77,7 +72,7 @@ class _LoginPage extends State<LoginPage> {
       if (needsSetup) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const SetupProfilePage()),
+          MaterialPageRoute(builder: (context) => const WidgetTree()),
         );
         return;
       }
@@ -117,7 +112,7 @@ class _LoginPage extends State<LoginPage> {
                 controller: _controllerEmail,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
-                  hintText: 'DaniKebede@gmail.com',
+                  hintText: 'example@gmail.com',
                 ),
               ),
               Container(
@@ -136,7 +131,7 @@ class _LoginPage extends State<LoginPage> {
                 controller: _controllerPassword,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
-                  hintText: '............',
+                  hintText: '************',
                 ),
               ),
               Container(
@@ -209,7 +204,7 @@ class _LoginPage extends State<LoginPage> {
                       padding: const EdgeInsets.only(top: 30.0),
                       child: OutlinedButton(
                         onPressed: () => {
-                          Navigator.push(
+                          Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
                               builder: (context) => const SignupPage(),

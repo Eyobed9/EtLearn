@@ -194,7 +194,7 @@ class _InboxScreenState extends State<InboxScreen> {
           valueListenable: totalCreditsNotifier,
           builder: (context, totalCredits, _) {
             return Text(
-              'Inbox • $totalCredits credits',
+              'Inbox',
               style: const TextStyle(
                 color: Color(0xFF202244),
                 fontFamily: 'Jost',

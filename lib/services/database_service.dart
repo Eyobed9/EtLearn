@@ -3,6 +3,21 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Database service for courses, mentors, requests, enrollments, messages
 class DatabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  // =========== Mentors ===========
+  // Fetch all mentors (users with at least 1 subject to teach)
+  Future<List<Map<String, dynamic>>> getMentors() async {
+    try {
+      final response = await _supabase
+          .from('users')
+          .select()
+          .not('subjects_teach', 'is', null); // only users who can teach
+
+      // Convert response to List<Map<String, dynamic>>
+      return List<Map<String, dynamic>>.from(response);
+        } catch (e) {
+      return [];
+    }
+  }
 
   // ========== Courses ==========
 
@@ -35,8 +50,24 @@ class DatabaseService {
   }
 
   /// Get featured courses (latest courses, limited)
-  Future<List<Map<String, dynamic>>> getFeaturedCourses({int limit = 6}) async {
-    return getAllCourses(limit: limit);
+  Future<List<Map<String, dynamic>>> getFeaturedCourses({
+    required String currentUserUid,
+    int limit = 6,
+  }) async {
+    final response = await _supabase
+        .from('courses')
+        .select('''
+          *,
+          users:creator_uid (
+            uid,
+            full_name
+          )
+        ''')
+        .neq('creator_uid', currentUserUid)
+        .order('created_at', ascending: false)
+        .limit(limit);
+
+    return List<Map<String, dynamic>>.from(response);
   }
 
   /// Get course by ID
@@ -95,7 +126,9 @@ class DatabaseService {
   }
 
   /// Get courses created by a user
-  Future<List<Map<String, dynamic>>> getCoursesByCreator(String creatorUid) async {
+  Future<List<Map<String, dynamic>>> getCoursesByCreator(
+    String creatorUid,
+  ) async {
     final response = await _supabase
         .from('courses')
         .select('''
@@ -117,7 +150,9 @@ class DatabaseService {
   }
 
   /// Get courses enrolled by a user
-  Future<List<Map<String, dynamic>>> getEnrolledCourses(String learnerUid) async {
+  Future<List<Map<String, dynamic>>> getEnrolledCourses(
+    String learnerUid,
+  ) async {
     final response = await _supabase
         .from('enrollments')
         .select('''
@@ -155,7 +190,9 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getAllMentors({int limit = 100}) async {
     final response = await _supabase
         .from('users')
-        .select('uid, email, full_name, photo_url, bio, skills, subjects_teach, credits')
+        .select(
+          'uid, email, full_name, photo_url, bio, skills, subjects_teach, credits',
+        )
         .order('created_at', ascending: false)
         .limit(limit);
 
@@ -180,7 +217,7 @@ class DatabaseService {
         .limit(limit);
 
     final mentors = List<Map<String, dynamic>>.from(response);
-    
+
     // Filter to only include mentors who have created at least one course
     final mentorsWithCourses = <Map<String, dynamic>>[];
     for (final mentor in mentors) {
@@ -198,7 +235,9 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> searchMentors(String query) async {
     final response = await _supabase
         .from('users')
-        .select('uid, email, full_name, photo_url, bio, skills, subjects_teach, credits')
+        .select(
+          'uid, email, full_name, photo_url, bio, skills, subjects_teach, credits',
+        )
         .or('full_name.ilike.%$query%,bio.ilike.%$query%')
         .order('created_at', ascending: false);
 
@@ -209,7 +248,9 @@ class DatabaseService {
   Future<Map<String, dynamic>?> getMentorProfile(String mentorUid) async {
     final response = await _supabase
         .from('users')
-        .select('uid, email, full_name, photo_url, bio, skills, subjects_teach, credits, created_at')
+        .select(
+          'uid, email, full_name, photo_url, bio, skills, subjects_teach, credits, created_at',
+        )
         .eq('uid', mentorUid)
         .maybeSingle();
 
@@ -217,13 +258,12 @@ class DatabaseService {
   }
 
   /// Search both courses and mentors
-  Future<Map<String, List<Map<String, dynamic>>>> searchAll(String query) async {
+  Future<Map<String, List<Map<String, dynamic>>>> searchAll(
+    String query,
+  ) async {
     final courses = await searchCourses(query);
     final mentors = await searchMentors(query);
-    return {
-      'courses': courses,
-      'mentors': mentors,
-    };
+    return {'courses': courses, 'mentors': mentors};
   }
 
   // ========== Course Requests ==========
@@ -280,7 +320,9 @@ class DatabaseService {
   }
 
   /// Get course requests sent by a learner (outgoing requests)
-  Future<List<Map<String, dynamic>>> getLearnerRequests(String learnerUid) async {
+  Future<List<Map<String, dynamic>>> getLearnerRequests(
+    String learnerUid,
+  ) async {
     final response = await _supabase
         .from('course_requests')
         .select('''
@@ -311,13 +353,20 @@ class DatabaseService {
   }
 
   /// Accept a course request
-  Future<void> acceptCourseRequest(int requestId, String learnerUid, int courseId) async {
+  Future<void> acceptCourseRequest(
+    int requestId,
+    String learnerUid,
+    int courseId,
+  ) async {
     // Update request status
     await _supabase
         .from('course_requests')
-        .update({'status': 'accepted', 'updated_at': DateTime.now().toIso8601String()})
+        .update({
+          'status': 'accepted',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
         .eq('id', requestId);
-    
+
     // Create enrollment
     await _supabase.from('enrollments').insert({
       'course_id': courseId,
@@ -331,7 +380,10 @@ class DatabaseService {
   Future<void> rejectCourseRequest(int requestId) async {
     await _supabase
         .from('course_requests')
-        .update({'status': 'rejected', 'updated_at': DateTime.now().toIso8601String()})
+        .update({
+          'status': 'rejected',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
         .eq('id', requestId);
   }
 
@@ -358,12 +410,16 @@ class DatabaseService {
             photo_url
           )
         ''')
-        .or('and(sender_uid.eq.$userId1,receiver_uid.eq.$userId2),and(sender_uid.eq.$userId2,receiver_uid.eq.$userId1)');
+        .or(
+          'and(sender_uid.eq.$userId1,receiver_uid.eq.$userId2),and(sender_uid.eq.$userId2,receiver_uid.eq.$userId1)',
+        );
 
     final response = courseId != null
-        ? await query.eq('course_id', courseId).order('created_at', ascending: true)
+        ? await query
+              .eq('course_id', courseId)
+              .order('created_at', ascending: true)
         : await query.order('created_at', ascending: true);
-    
+
     return List<Map<String, dynamic>>.from(response);
   }
 
@@ -430,7 +486,9 @@ class DatabaseService {
   Future<Map<String, dynamic>?> getUserProfile(String uid) async {
     final response = await _supabase
         .from('users')
-        .select('uid, email, full_name, photo_url, bio, skills, subjects_teach, credits, created_at')
+        .select(
+          'uid, email, full_name, photo_url, bio, skills, subjects_teach, credits, created_at',
+        )
         .eq('uid', uid)
         .maybeSingle();
 
@@ -438,13 +496,13 @@ class DatabaseService {
   }
 
   /// Update user profile
-  Future<void> updateUserProfile(String uid, Map<String, dynamic> updates) async {
+  Future<void> updateUserProfile(
+    String uid,
+    Map<String, dynamic> updates,
+  ) async {
     await _supabase
         .from('users')
-        .update({
-          ...updates,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
+        .update({...updates, 'updated_at': DateTime.now().toIso8601String()})
         .eq('uid', uid);
   }
 

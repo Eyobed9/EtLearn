@@ -12,7 +12,7 @@ class AllMentorsPage extends StatefulWidget {
 class _AllMentorsPageState extends State<AllMentorsPage> {
   final DatabaseService _dbService = DatabaseService();
   final TextEditingController _searchController = TextEditingController();
-  
+
   List<Map<String, dynamic>> _mentors = [];
   List<Map<String, dynamic>> _filteredMentors = [];
   bool _loading = true;
@@ -33,7 +33,8 @@ class _AllMentorsPageState extends State<AllMentorsPage> {
   Future<void> _loadMentors() async {
     setState(() => _loading = true);
     try {
-      final mentors = await _dbService.getAllMentors();
+      // Fetch mentors: users with subjects_teach not empty
+      final mentors = await _dbService.getMentors();
       setState(() {
         _mentors = mentors;
         _filteredMentors = mentors;
@@ -103,7 +104,8 @@ class _AllMentorsPageState extends State<AllMentorsPage> {
                   hintText: 'Search mentors...',
                   prefixIcon: Icon(Icons.search, color: Color(0xFF0961F5)),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                 ),
               ),
             ),
@@ -134,7 +136,8 @@ class _AllMentorsPageState extends State<AllMentorsPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => MentorProfilePage(mentorUid: mentor['uid']),
+                                    builder: (_) => MentorProfilePage(
+                                        mentorUid: mentor['uid']),
                                   ),
                                 );
                               },
@@ -160,6 +163,7 @@ class _MentorListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final subjects = mentor['subjects_teach'] ?? [];
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
@@ -175,7 +179,8 @@ class _MentorListItem extends StatelessWidget {
               CircleAvatar(
                 radius: 30,
                 backgroundColor: Colors.grey.shade300,
-                backgroundImage: mentor['photo_url'] != null && mentor['photo_url'] != ''
+                backgroundImage: mentor['photo_url'] != null &&
+                        mentor['photo_url'] != ''
                     ? NetworkImage(mentor['photo_url'])
                     : null,
                 child: mentor['photo_url'] == null || mentor['photo_url'] == ''
@@ -195,7 +200,8 @@ class _MentorListItem extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (mentor['bio'] != null && mentor['bio'].toString().isNotEmpty) ...[
+                    if (mentor['bio'] != null &&
+                        mentor['bio'].toString().isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         mentor['bio'],
@@ -210,14 +216,19 @@ class _MentorListItem extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        if (mentor['subjects_teach'] != null &&
-                            (mentor['subjects_teach'] as List).isNotEmpty)
-                          Chip(
-                            label: Text(
-                              (mentor['subjects_teach'] as List).first.toString(),
-                            ),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
+                        if (subjects.isNotEmpty)
+                          ...subjects
+                              .take(2)
+                              .map((s) => Padding(
+                                    padding:
+                                        const EdgeInsets.only(right: 4.0),
+                                    child: Chip(
+                                      label: Text(s.toString()),
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ))
+                              .toList(),
                         const Spacer(),
                         Text(
                           '${mentor['credits'] ?? 0} credits',
