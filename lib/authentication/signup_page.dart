@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'auth.dart';
 import 'package:et_learn/screens/email_confirmation_page.dart';
-import 'package:et_learn/screens/registration_success_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});

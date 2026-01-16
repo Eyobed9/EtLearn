@@ -5,8 +5,7 @@ import 'package:et_learn/services/database_service.dart';
 import 'package:et_learn/helpers/credits.dart';
 import 'package:et_learn/screens/setup_profile.dart';
 import 'package:et_learn/screens/course_detail_page.dart';
-import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
-import 'package:et_learn/widget_tree.dart'; // For converting time formatting if needed, or just standard parsing
+import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -619,15 +618,17 @@ class _ProfileViewState extends State<ProfileView> {
       final password = match.group(3);
 
       if (roomName != null) {
-        var options = JitsiMeetingOptions(
-          roomNameOrUrl: roomName,
-          userDisplayName:
-              _userProfile?['full_name'] ??
-              _auth.currentUser?.displayName ??
-              'Learner',
-          userEmail: _auth.currentUser?.email,
-          userAvatarUrl:
-              _userProfile?['photo_url'] ?? _auth.currentUser?.photoURL,
+        var jitsiMeet = JitsiMeet();
+        var options = JitsiMeetConferenceOptions(
+          room: roomName,
+          userInfo: JitsiMeetUserInfo(
+            displayName:
+                _userProfile?['full_name'] ??
+                _auth.currentUser?.displayName ??
+                'Learner',
+            email: _auth.currentUser?.email,
+            avatar: _userProfile?['photo_url'] ?? _auth.currentUser?.photoURL,
+          ),
           configOverrides: {
             "startWithAudioMuted": true,
             "startWithVideoMuted": true,
@@ -636,7 +637,7 @@ class _ProfileViewState extends State<ProfileView> {
         );
 
         try {
-          await JitsiMeetWrapper.joinMeeting(options: options);
+          jitsiMeet.join(options);
         } catch (error) {
           debugPrint("Jitsi Error: $error");
           // Only show error, don't crash app

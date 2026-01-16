@@ -777,13 +777,21 @@
 //       }
 //     }
 
-//     await JitsiMeetWrapper.joinMeeting(
-//       options: JitsiMeetingOptions(
-//         roomNameOrUrl: roomName,
-//         userDisplayName: user.displayName ?? 'Mentor',
-//         configOverrides: {'requireDisplayName': true, 'roomPassword': password},
+//     var jitsiMeet = JitsiMeet();
+//     var options = JitsiMeetConferenceOptions(
+//       room: roomName,
+//       userInfo: JitsiMeetUserInfo(
+//         displayName: user.displayName ?? 'Mentor',
+//         email: user.email,
+//         avatar: user.photoURL
 //       ),
+//       configOverrides: {
+//         'requireDisplayName': true,
+//         if (password.isNotEmpty) 'roomPassword': password
+//       },
 //     );
+
+//     jitsiMeet.join(options);
 
 //     if (!mounted) return;
 //     ScaffoldMessenger.of(context).showSnackBar(
@@ -1096,7 +1104,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:et_learn/helpers/credits.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
+import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Model for requests
@@ -1232,12 +1240,15 @@ class _InboxScreenState extends State<InboxScreen> {
     // Short delay before starting meeting
     await Future.delayed(const Duration(seconds: 2));
 
-    await JitsiMeetWrapper.joinMeeting(
-      options: JitsiMeetingOptions(
-        roomNameOrUrl: roomName,
-        userDisplayName: 'Teacher',
+    var jitsiMeet = JitsiMeet();
+    var options = JitsiMeetConferenceOptions(
+      room: roomName,
+      userInfo: JitsiMeetUserInfo(
+        displayName: 'Teacher',
+        email: FirebaseAuth.instance.currentUser?.email,
       ),
     );
+    jitsiMeet.join(options);
 
     // Add coins after meeting ends
     await _addCoins(request.coins);

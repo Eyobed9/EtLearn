@@ -50,6 +50,8 @@ class _EmailConfirmationPageState extends State<EmailConfirmationPage> {
     if (user != null && !user.emailVerified) {
       try {
         await user.sendEmailVerification();
+        if (!mounted) return;
+
         setState(() {
           _canResend = false;
           _resendCountdown = 30;
@@ -75,6 +77,7 @@ class _EmailConfirmationPageState extends State<EmailConfirmationPage> {
           const SnackBar(content: Text('Verification email resent!')),
         );
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error resending email: $e')));

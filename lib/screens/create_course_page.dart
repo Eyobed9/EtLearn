@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:et_learn/services/user_sync_service.dart';
 import 'package:et_learn/screens/setup_profile.dart';
 
 class CreateCoursePage extends StatefulWidget {
