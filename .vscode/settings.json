@@ -1,3 +1,6 @@
 {
-    "cmake.sourceDirectory": "C:/Users/Huawie/Desktop/et_learn/windows"
+    "cmake.sourceDirectory": "C:/Users/Huawie/Desktop/et_learn/windows",
+    "chat.tools.terminal.autoApprove": {
+        "mv": true
+    }
 }
