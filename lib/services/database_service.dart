@@ -191,7 +191,7 @@ class DatabaseService {
     final response = await _supabase
         .from('users')
         .select(
-          'uid, email, full_name, photo_url, bio, skills, subjects_teach, credits',
+          'uid, email, full_name, photo_url, bio, subjects_teach, credits',
         )
         .order('created_at', ascending: false)
         .limit(limit);
@@ -210,7 +210,6 @@ class DatabaseService {
           full_name,
           photo_url,
           bio,
-          skills,
           subjects_teach,
           credits
         ''')
@@ -237,7 +236,7 @@ class DatabaseService {
     final response = await _supabase
         .from('users')
         .select(
-          'uid, email, full_name, photo_url, bio, skills, subjects_teach, credits',
+          'uid, email, full_name, photo_url, bio, subjects_teach, credits',
         )
         .or('full_name.ilike.%$query%,bio.ilike.%$query%')
         .order('created_at', ascending: false);
@@ -250,7 +249,7 @@ class DatabaseService {
     final response = await _supabase
         .from('users')
         .select(
-          'uid, email, full_name, photo_url, bio, skills, subjects_teach, credits, created_at',
+          'uid, email, full_name, photo_url, bio, subjects_teach, credits, created_at',
         )
         .eq('uid', mentorUid)
         .maybeSingle();
@@ -503,7 +502,7 @@ class DatabaseService {
     final response = await _supabase
         .from('users')
         .select(
-          'uid, email, full_name, photo_url, bio, skills, subjects_teach, credits, created_at',
+          'uid, email, full_name, photo_url, bio, subjects_teach, credits, created_at',
         )
         .eq('uid', uid)
         .maybeSingle();
@@ -531,5 +530,24 @@ class DatabaseService {
         .maybeSingle();
 
     return (response?['credits'] as int?) ?? 0;
+  }
+
+  /// Get meeting invites for a user
+  Future<List<Map<String, dynamic>>> getMeetingInvites(String userId) async {
+    final response = await _supabase
+        .from('messages')
+        .select('''
+          *,
+          users!messages_sender_uid_fkey (
+            full_name,
+            photo_url
+          )
+        ''')
+        .eq('receiver_uid', userId)
+        .ilike('content', '%Join: https://%')
+        .order('created_at', ascending: false)
+        .limit(5);
+
+    return List<Map<String, dynamic>>.from(response);
   }
 }

@@ -54,9 +54,40 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     await _sendRequest();
   }
 
+  /// Opens a Date & Time picker for selecting a single preferred slot
+  Future<DateTime?> _pickPreferredTime() async {
+    // 1. Pick Date
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 30)),
+    );
+    if (date == null) return null;
+
+    if (!mounted) return null;
+
+    // 2. Pick Time
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (time == null) return null;
+
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
   Future<void> _sendRequest() async {
     final user = _auth.currentUser;
     if (user == null) return;
+
+    // Ask for preferred schedule
+    final scheduledTime = await _pickPreferredTime();
+    if (scheduledTime == null) {
+      // User cancelled picker
+      return;
+    }
 
     setState(() => sendingRequest = true);
 
@@ -68,11 +99,16 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
         courseId: courseId,
         learnerUid: user.uid,
         mentorUid: mentorUid,
+        scheduledTime: scheduledTime,
       );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request to learn sent successfully!')),
+        SnackBar(
+          content: Text(
+            'Request sent for ${scheduledTime.toString().split('.')[0]}',
+          ),
+        ),
       );
     } catch (e) {
       debugPrint('Error sending request: $e');

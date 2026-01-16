@@ -76,30 +76,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // Fallback to all mentors (with subjects) if none
       if (mentors.isEmpty) {
-        mentors = await _dbService.getMentors();
+        featuredMentors = await _dbService.getMentors();
       }
 
-      // Last-resort demo data so UI is never empty
-      if (mentors.isEmpty) {
-        mentors = [
-          {
-            'full_name': 'Demo Mentor',
-            'subjects_teach': ['Math'],
-            'photo_url': null,
-            'uid': 'demo-1',
-          },
-          {
-            'full_name': 'Sample Coach',
-            'subjects_teach': ['Science'],
-            'photo_url': null,
-            'uid': 'demo-2',
-          },
-        ];
-      }
-
-      debugPrint('Fetched mentors: $mentors');
       setState(() {
-        featuredMentors = mentors.take(6).toList();
+        featuredMentors = mentors.toList();
         loadingMentors = false;
       });
     } catch (e) {

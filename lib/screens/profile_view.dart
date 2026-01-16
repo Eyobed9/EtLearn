@@ -5,6 +5,8 @@ import 'package:et_learn/services/database_service.dart';
 import 'package:et_learn/helpers/credits.dart';
 import 'package:et_learn/screens/setup_profile.dart';
 import 'package:et_learn/screens/course_detail_page.dart';
+import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
+import 'package:et_learn/widget_tree.dart'; // For converting time formatting if needed, or just standard parsing
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -16,10 +18,11 @@ class ProfileView extends StatefulWidget {
 class _ProfileViewState extends State<ProfileView> {
   final DatabaseService _dbService = DatabaseService();
   final Auth _auth = Auth();
-  
+
   Map<String, dynamic>? _userProfile;
   List<Map<String, dynamic>> _teachingCourses = [];
   List<Map<String, dynamic>> _learningCourses = [];
+  List<Map<String, dynamic>> _notifications = [];
 
   @override
   void initState() {
@@ -34,11 +37,12 @@ class _ProfileViewState extends State<ProfileView> {
     try {
       // Load user profile from database
       final profile = await _dbService.getUserProfile(user.uid);
-      
+
       // Load courses
       final teaching = await _dbService.getCoursesByCreator(user.uid);
       final learning = await _dbService.getEnrolledCourses(user.uid);
-      
+      final notifications = await _dbService.getMeetingInvites(user.uid);
+
       // Update credits notifier
       if (profile != null) {
         totalCreditsNotifier.value = profile['credits'] ?? 0;
@@ -51,6 +55,7 @@ class _ProfileViewState extends State<ProfileView> {
           final course = e['courses'] as Map<String, dynamic>?;
           return course ?? <String, dynamic>{};
         }).toList();
+        _notifications = notifications;
       });
     } catch (e) {
       debugPrint('Error loading profile: $e');
@@ -60,7 +65,7 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
-    
+
     return RefreshIndicator(
       onRefresh: _loadProfile,
       child: SingleChildScrollView(
@@ -70,20 +75,29 @@ class _ProfileViewState extends State<ProfileView> {
             // Profile Header
             _buildProfileHeader(user),
             const SizedBox(height: 24),
+            // Validations for Meeting
+            if (_notifications.isNotEmpty) ...[
+              _buildNotificationsSection(),
+              const SizedBox(height: 24),
+            ],
             // Credits Balance
             _buildCreditsCard(),
             const SizedBox(height: 24),
             // Bio Section
-            if (_userProfile?['bio'] != null && _userProfile!['bio'].toString().isNotEmpty)
+            if (_userProfile?['bio'] != null &&
+                _userProfile!['bio'].toString().isNotEmpty)
               _buildBioSection(),
             // Skills/Interests Section
-            if (_userProfile?['skills'] != null || _userProfile?['subjects_teach'] != null)
+            if (_userProfile?['skills'] != null ||
+                _userProfile?['subjects_teach'] != null)
               _buildSkillsSection(),
             const SizedBox(height: 24),
             // Courses Teaching
-            if (_teachingCourses.isNotEmpty) _buildCoursesSection('Teaching', _teachingCourses),
+            if (_teachingCourses.isNotEmpty)
+              _buildCoursesSection('Teaching', _teachingCourses),
             // Courses Learning
-            if (_learningCourses.isNotEmpty) _buildCoursesSection('Learning', _learningCourses),
+            if (_learningCourses.isNotEmpty)
+              _buildCoursesSection('Learning', _learningCourses),
             const SizedBox(height: 24),
             // Settings Card
             _buildSettingsCard(),
@@ -96,8 +110,10 @@ class _ProfileViewState extends State<ProfileView> {
 
   Widget _buildProfileHeader(user) {
     final photoUrl = _userProfile?['photo_url']?.toString() ?? user?.photoURL;
-    final fullName = _userProfile?['full_name']?.toString() ?? user?.displayName ?? 'User';
-    final email = _userProfile?['email']?.toString() ?? user?.email ?? 'No email';
+    final fullName =
+        _userProfile?['full_name']?.toString() ?? user?.displayName ?? 'User';
+    final email =
+        _userProfile?['email']?.toString() ?? user?.email ?? 'No email';
 
     return Column(
       children: [
@@ -211,7 +227,11 @@ class _ProfileViewState extends State<ProfileView> {
             children: [
               Column(
                 children: [
-                  const Icon(Icons.account_balance_wallet, color: Color(0xFF0961F5), size: 32),
+                  const Icon(
+                    Icons.account_balance_wallet,
+                    color: Color(0xFF0961F5),
+                    size: 32,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     '$credits',
@@ -223,10 +243,7 @@ class _ProfileViewState extends State<ProfileView> {
                   ),
                   const Text(
                     'Credits',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF545454),
-                    ),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF545454)),
                   ),
                 ],
               ),
@@ -245,10 +262,7 @@ class _ProfileViewState extends State<ProfileView> {
                   ),
                   const Text(
                     'Teaching',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF545454),
-                    ),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF545454)),
                   ),
                 ],
               ),
@@ -267,10 +281,7 @@ class _ProfileViewState extends State<ProfileView> {
                   ),
                   const Text(
                     'Learning',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF545454),
-                    ),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF545454)),
                   ),
                 ],
               ),
@@ -301,10 +312,7 @@ class _ProfileViewState extends State<ProfileView> {
         children: [
           const Text(
             'Bio',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Text(
@@ -346,10 +354,7 @@ class _ProfileViewState extends State<ProfileView> {
           if (subjects.isNotEmpty) ...[
             const Text(
               'Subjects Teaching',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -367,10 +372,7 @@ class _ProfileViewState extends State<ProfileView> {
           if (skills.isNotEmpty) ...[
             const Text(
               'Skills & Interests',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -389,7 +391,10 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildCoursesSection(String title, List<Map<String, dynamic>> courses) {
+  Widget _buildCoursesSection(
+    String title,
+    List<Map<String, dynamic>> courses,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       padding: const EdgeInsets.all(20),
@@ -409,15 +414,13 @@ class _ProfileViewState extends State<ProfileView> {
         children: [
           Text(
             'Courses $title (${courses.length})',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           ...courses.take(3).map((course) {
             return ListTile(
-              leading: course['thumbnail_url'] != null &&
+              leading:
+                  course['thumbnail_url'] != null &&
                       course['thumbnail_url'].toString().isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -526,5 +529,129 @@ class _ProfileViewState extends State<ProfileView> {
       trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
+  }
+
+  Widget _buildNotificationsSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F1FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF0961F5).withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.video_call, color: Color(0xFF0961F5)),
+              SizedBox(width: 8),
+              Text(
+                'Active Sessions',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF202244),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ..._notifications.map((msg) {
+            final content = msg['content'] as String;
+            final match = RegExp(r'Pass: (\S+)').firstMatch(content);
+            final password = match?.group(1) ?? '';
+
+            final sender = msg['users'] as Map<String, dynamic>?;
+            final senderName = sender?['full_name'] ?? 'Mentor';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$senderName started a session',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  if (password.isNotEmpty)
+                    SelectableText(
+                      'Password: $password',
+                      style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0961F5),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => _joinMeeting(content),
+                      child: const Text('Join Class'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  void _joinMeeting(String content) async {
+    final regExp = RegExp(r'Join: (https://meet.jit.si/(\S+)) Pass: (\S+)');
+    final match = regExp.firstMatch(content);
+
+    if (match != null) {
+      final roomName = match.group(2);
+      final password = match.group(3);
+
+      if (roomName != null) {
+        var options = JitsiMeetingOptions(
+          roomNameOrUrl: roomName,
+          userDisplayName:
+              _userProfile?['full_name'] ??
+              _auth.currentUser?.displayName ??
+              'Learner',
+          userEmail: _auth.currentUser?.email,
+          userAvatarUrl:
+              _userProfile?['photo_url'] ?? _auth.currentUser?.photoURL,
+          configOverrides: {
+            "startWithAudioMuted": true,
+            "startWithVideoMuted": true,
+            if (password != null) "roomPassword": password,
+          },
+        );
+
+        try {
+          await JitsiMeetWrapper.joinMeeting(options: options);
+        } catch (error) {
+          debugPrint("Jitsi Error: $error");
+          // Only show error, don't crash app
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Error joining meeting: $error")),
+            );
+          }
+        }
+      }
+    } else {
+      // Fallback for older messages format if needed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Invalid meeting link format")),
+      );
+    }
   }
 }

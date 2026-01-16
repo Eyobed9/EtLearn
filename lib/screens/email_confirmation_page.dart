@@ -13,7 +13,6 @@ class EmailConfirmationPage extends StatefulWidget {
 class _EmailConfirmationPageState extends State<EmailConfirmationPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   Timer? _timer;
-  bool _isVerified = false;
   bool _canResend = true;
   int _resendCountdown = 30;
 
@@ -36,19 +35,11 @@ class _EmailConfirmationPageState extends State<EmailConfirmationPage> {
         await user.reload();
         if (user.emailVerified) {
           timer.cancel();
-          setState(() {
-            _isVerified = true;
-          });
-          // Navigate to Success Page after sort delay
-          Future.delayed(const Duration(seconds: 1), () {
-            if (!mounted) return;
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const RegistrationSuccessPage(),
-              ),
-            );
-          });
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const RegistrationSuccessPage()),
+          );
         }
       }
     });
@@ -102,16 +93,14 @@ class _EmailConfirmationPageState extends State<EmailConfirmationPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                _isVerified
-                    ? Icons.check_circle_rounded
-                    : Icons.mark_email_read_rounded,
+              const Icon(
+                Icons.mark_email_read_rounded,
                 size: 80,
-                color: _isVerified ? Colors.green : const Color(0xFF3D5CFF),
+                color: Color(0xFF3D5CFF),
               ),
               const SizedBox(height: 24),
               Text(
-                _isVerified ? 'Email Verified' : 'Check your email',
+                'Check your email',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -120,32 +109,27 @@ class _EmailConfirmationPageState extends State<EmailConfirmationPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                _isVerified
-                    ? 'Redirecting you...'
-                    : 'We have sent a confirmation email to ${_auth.currentUser?.email}.\nPlease click the link to verify your account.',
+                'We have sent a confirmation email to ${_auth.currentUser?.email}.\nPlease click the link to verify your account.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: const Color(0xFF858597),
                 ),
               ),
               const SizedBox(height: 32),
-              if (!_isVerified)
-                ElevatedButton(
-                  onPressed: _canResend ? _resendEmail : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3D5CFF),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    _canResend
-                        ? 'Resend Email'
-                        : 'Resend in $_resendCountdown s',
+              ElevatedButton(
+                onPressed: _canResend ? _resendEmail : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3D5CFF),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                child: Text(
+                  _canResend ? 'Resend Email' : 'Resend in $_resendCountdown s',
+                ),
+              ),
             ],
           ),
         ),
