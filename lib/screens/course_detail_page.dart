@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:et_learn/authentication/auth.dart';
 import 'package:et_learn/services/database_service.dart';
-import 'package:et_learn/services/user_sync_service.dart';
 import 'package:et_learn/screens/setup_profile.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CourseDetailPage extends StatefulWidget {
   final Map course;
@@ -16,6 +16,7 @@ class CourseDetailPage extends StatefulWidget {
 class _CourseDetailPageState extends State<CourseDetailPage> {
   final DatabaseService _dbService = DatabaseService();
   final Auth _auth = Auth();
+  final supabase = Supabase.instance.client;
   bool sendingRequest = false;
 
   Future<void> _checkProfileAndRequest() async {
@@ -27,17 +28,23 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
       return;
     }
 
-    // Check if user has a complete profile
-    final needsSetup = await UserSyncService.needsProfileSetup(user);
-    if (needsSetup) {
-      // Navigate to profile setup
+    // Only require setup when the user has not provided subjects to teach
+    final profile = await supabase
+        .from('users')
+        .select('subjects_teach')
+        .eq('uid', user.uid)
+        .maybeSingle();
+
+    final needsSubjectSetup =
+        profile == null || profile['subjects_teach'] == null;
+
+    if (needsSubjectSetup) {
       if (!mounted) return;
       final result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const SetupProfilePage()),
       );
 
-      // If user completed setup, try again
       if (result == true) {
         await _sendRequest();
       }

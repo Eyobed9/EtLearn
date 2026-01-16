@@ -176,7 +176,7 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
       const SnackBar(content: Text('Course created successfully!')),
     );
 
-    Navigator.pop(context);
+    Navigator.pop(context, true);
 
     setState(() {});
   }

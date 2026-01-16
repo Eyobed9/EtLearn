@@ -9,10 +9,10 @@ class MyCoursesView extends StatefulWidget {
   const MyCoursesView({super.key});
 
   @override
-  State<MyCoursesView> createState() => _MyCoursesViewState();
+  State<MyCoursesView> createState() => MyCoursesViewState();
 }
 
-class _MyCoursesViewState extends State<MyCoursesView> {
+class MyCoursesViewState extends State<MyCoursesView> {
   final DatabaseService _dbService = DatabaseService();
   final Auth _auth = Auth();
 
@@ -56,6 +56,14 @@ class _MyCoursesViewState extends State<MyCoursesView> {
     }
 
     setState(() => loading = false);
+  }
+
+  /// Refresh courses and switch to the Teaching tab so newly created courses are visible immediately.
+  Future<void> refreshTeaching() async {
+    setState(() {
+      selectedTab = CourseTabType.teaching;
+    });
+    await fetchCourses();
   }
 
   @override

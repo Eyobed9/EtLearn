@@ -16,10 +16,33 @@ class _LoginPage extends State<LoginPage> {
   final Auth auth = Auth();
   String? errorMessage = "";
 
+  int _failedAttempts = 0;
+  DateTime? _lockUntil;
+  bool _obscurePassword = true;
+
   final TextEditingController _controllerEmail = TextEditingController();
   final TextEditingController _controllerPassword = TextEditingController();
 
   Future<void> signInWithEmailAndPassword() async {
+    // If locked, block attempts until the lock expires.
+    if (_lockUntil != null) {
+      final now = DateTime.now();
+      if (now.isBefore(_lockUntil!)) {
+        final remaining = _lockUntil!.difference(now);
+        setState(() {
+          errorMessage =
+              'Login locked. Try again in ${remaining.inMinutes}m ${(remaining.inSeconds % 60)}s';
+        });
+        return;
+      } else {
+        // Lock expired, reset counters.
+        setState(() {
+          _lockUntil = null;
+          _failedAttempts = 0;
+        });
+      }
+    }
+
     try {
       await auth.signInWithEmailAndPassword(
         email: _controllerEmail.text,
@@ -31,21 +54,34 @@ class _LoginPage extends State<LoginPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const WidgetTree()),
-          );
-          return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const WidgetTree()),
+        );
+        return;
       }
 
       if (!mounted) return;
+      setState(() {
+        _failedAttempts = 0;
+        _lockUntil = null;
+        errorMessage = "";
+      });
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const WidgetTree()),
       );
     } on FirebaseAuthException catch (e) {
       setState(() {
-        errorMessage = e.message;
+        _failedAttempts += 1;
+        if (_failedAttempts >= 5) {
+          _lockUntil = DateTime.now().add(const Duration(minutes: 5));
+          errorMessage = 'Too many attempts. Locked for 5 minutes.';
+        } else {
+          final remaining = 5 - _failedAttempts;
+          errorMessage =
+              '${e.message ?? 'Login failed'}. Attempts left: $remaining';
+        }
       });
     }
   }
@@ -127,11 +163,21 @@ class _LoginPage extends State<LoginPage> {
                 ),
               ),
               TextField(
-                obscureText: true,
+                obscureText: _obscurePassword,
                 controller: _controllerPassword,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
                   hintText: '************',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () => setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    }),
+                  ),
                 ),
               ),
               Container(

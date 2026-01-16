@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'auth.dart';
+import 'package:et_learn/screens/email_confirmation_page.dart';
 import 'package:et_learn/screens/registration_success_page.dart';
 
 class SignupPage extends StatefulWidget {
@@ -68,12 +69,17 @@ class _SignupPageState extends State<SignupPage> {
         password: _controllerPassword.text,
       );
 
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+      }
+
       if (!mounted) return;
 
-      // Navigate to success page
+      // Navigate to email confirmation page
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const RegistrationSuccessPage()),
+        MaterialPageRoute(builder: (_) => const EmailConfirmationPage()),
       );
     } on FirebaseAuthException catch (e) {
       setState(() {

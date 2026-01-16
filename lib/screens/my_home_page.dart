@@ -26,6 +26,8 @@ class _MyHomePageState extends State<MyHomePage> {
   final supabase = Supabase.instance.client;
   final user = Auth().currentUser;
   final DatabaseService _dbService = DatabaseService();
+  final GlobalKey<MyCoursesViewState> _myCoursesKey =
+      GlobalKey<MyCoursesViewState>();
 
   int _currentIndex = 0;
   bool loadingCourses = true;
@@ -67,10 +69,37 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _fetchFeaturedMentors() async {
     try {
-      final mentors = await _dbService.getAllMentors();
+      // Try featured mentors (with courses) first
+      List<Map<String, dynamic>> mentors = await _dbService.getFeaturedMentors(
+        limit: 6,
+      );
+
+      // Fallback to all mentors (with subjects) if none
+      if (mentors.isEmpty) {
+        mentors = await _dbService.getMentors();
+      }
+
+      // Last-resort demo data so UI is never empty
+      if (mentors.isEmpty) {
+        mentors = [
+          {
+            'full_name': 'Demo Mentor',
+            'subjects_teach': ['Math'],
+            'photo_url': null,
+            'uid': 'demo-1',
+          },
+          {
+            'full_name': 'Sample Coach',
+            'subjects_teach': ['Science'],
+            'photo_url': null,
+            'uid': 'demo-2',
+          },
+        ];
+      }
+
       debugPrint('Fetched mentors: $mentors');
       setState(() {
-        featuredMentors = mentors.take(3).toList(); // take top 2 for homepage
+        featuredMentors = mentors.take(6).toList();
         loadingMentors = false;
       });
     } catch (e) {
@@ -163,12 +192,20 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return BaseScaffold(
+      padForFab: false,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final created = await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const CreateCoursePage()),
           );
+
+          if (created == true) {
+            // Jump to My Courses > Teaching and refresh lists
+            await _myCoursesKey.currentState?.refreshTeaching();
+            setState(() => _currentIndex = 1);
+            _loadFeaturedContent();
+          }
         },
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
@@ -224,7 +261,7 @@ class _MyHomePageState extends State<MyHomePage> {
           index: _currentIndex,
           children: [
             _homeContent(),
-            const MyCoursesView(),
+            MyCoursesView(key: _myCoursesKey),
             const InboxScreen(),
             const Padding(padding: EdgeInsets.all(20.0), child: ProfileView()),
           ],
@@ -453,14 +490,20 @@ class CourseCard extends StatelessWidget {
     }
 
     try {
-      // Insert request into 'offers' table
-      await supabase.from('offers').insert({
-        'uid': currentUserUid,
-        'type': 'learn',
-        'subject': subject,
-        'description': 'Request to learn "$title"',
-        'status': 'open',
-      });
+      await _ensureUserExists();
+
+      final scheduledAt = await _pickScheduleTime(context);
+      final db = DatabaseService();
+
+      await db.createCourseRequest(
+        courseId: courseId,
+        learnerUid: currentUserUid!,
+        mentorUid: teacherUid!,
+        scheduledTime: scheduledAt,
+        availableTimes: scheduledAt != null
+            ? [scheduledAt.toIso8601String()]
+            : null,
+      );
 
       ScaffoldMessenger.of(
         context,
@@ -470,6 +513,56 @@ class CourseCard extends StatelessWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Failed to send request')));
+    }
+  }
+
+  Future<DateTime?> _pickScheduleTime(BuildContext context) async {
+    final now = DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 30)),
+    );
+
+    if (pickedDate == null) return null;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 30))),
+    );
+
+    if (pickedTime == null) return null;
+
+    return DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+  }
+
+  Future<void> _ensureUserExists() async {
+    try {
+      final existing = await supabase
+          .from('users')
+          .select('uid')
+          .eq('uid', currentUserUid as Object)
+          .maybeSingle();
+
+      if (existing != null) return;
+
+      await supabase.from('users').upsert({
+        'uid': currentUserUid,
+        'full_name': 'New User',
+        'credits': 0,
+        'streak': 0,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('Failed to ensure user exists: $e');
     }
   }
 

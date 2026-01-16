@@ -14,7 +14,7 @@ class DatabaseService {
 
       // Convert response to List<Map<String, dynamic>>
       return List<Map<String, dynamic>>.from(response);
-        } catch (e) {
+    } catch (e) {
       return [];
     }
   }
@@ -214,6 +214,7 @@ class DatabaseService {
           subjects_teach,
           credits
         ''')
+        .not('subjects_teach', 'is', null)
         .limit(limit);
 
     final mentors = List<Map<String, dynamic>>.from(response);
@@ -273,15 +274,26 @@ class DatabaseService {
     required int courseId,
     required String learnerUid,
     required String mentorUid,
+    DateTime? scheduledTime,
+    List<String>? availableTimes,
   }) async {
+    final payload = <String, dynamic>{
+      'course_id': courseId,
+      'learner_uid': learnerUid,
+      'mentor_uid': mentorUid,
+      'status': 'pending',
+    };
+
+    if (scheduledTime != null) {
+      payload['scheduled_time'] = scheduledTime.toIso8601String();
+    }
+    if (availableTimes != null && availableTimes.isNotEmpty) {
+      payload['available_times'] = availableTimes;
+    }
+
     final response = await _supabase
         .from('course_requests')
-        .insert({
-          'course_id': courseId,
-          'learner_uid': learnerUid,
-          'mentor_uid': mentorUid,
-          'status': 'pending',
-        })
+        .insert(payload)
         .select()
         .single();
 
@@ -298,6 +310,8 @@ class DatabaseService {
           learner_uid,
           mentor_uid,
           status,
+          scheduled_time,
+          available_times,
           created_at,
           updated_at,
           courses (
@@ -331,6 +345,8 @@ class DatabaseService {
           learner_uid,
           mentor_uid,
           status,
+          scheduled_time,
+          available_times,
           created_at,
           updated_at,
           courses (

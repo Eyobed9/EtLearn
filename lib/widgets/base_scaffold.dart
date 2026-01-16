@@ -7,6 +7,7 @@ class BaseScaffold extends StatelessWidget {
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
   final Color backgroundColor;
+  final bool padForFab;
 
   const BaseScaffold({
     super.key,
@@ -15,14 +16,20 @@ class BaseScaffold extends StatelessWidget {
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.backgroundColor = const Color(0xFFF4F8FE),
+    this.padForFab = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final shouldPadForFab = floatingActionButton != null && padForFab;
+    final paddedBody = shouldPadForFab
+        ? Padding(padding: const EdgeInsets.only(bottom: 100), child: body)
+        : body;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: CreditsStreakAppBar(title: title),
-      body: body,
+      body: paddedBody,
       bottomNavigationBar: bottomNavigationBar,
       floatingActionButton: floatingActionButton,
     );

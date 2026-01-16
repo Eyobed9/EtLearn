@@ -535,25 +535,33 @@ import 'package:flutter/material.dart';
 import 'package:et_learn/helpers/credits.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:et_learn/services/database_service.dart';
+import 'package:et_learn/authentication/auth.dart';
+import 'dart:math';
 
 /// Model for requests
 class RequestData {
-  final String id;
-  final String name;
-  final String course;
-  final String duration;
-  final int coins;
+  final int id;
+  final int courseId;
+  final String learnerUid;
+  final String learnerName;
+  final String courseTitle;
+  final int creditCost;
+  final int durationMinutes;
   final List<String> availableTimes;
-  final String? meetingLink; // optional
+  final DateTime? scheduledTime;
+  final String? meetingLink;
 
   const RequestData({
     required this.id,
-    required this.name,
-    required this.course,
-    required this.duration,
-    required this.coins,
+    required this.courseId,
+    required this.learnerUid,
+    required this.learnerName,
+    required this.courseTitle,
+    required this.creditCost,
+    required this.durationMinutes,
     required this.availableTimes,
+    this.scheduledTime,
     this.meetingLink,
   });
 }
@@ -569,8 +577,10 @@ class InboxScreen extends StatefulWidget {
 class _InboxScreenState extends State<InboxScreen> {
   bool isRequestsTab = true;
   List<RequestData> requests = [];
+  bool loadingRequests = true;
   final supabase = Supabase.instance.client;
-  final String uid = FirebaseAuth.instance.currentUser!.uid;
+  final DatabaseService _dbService = DatabaseService();
+  final Auth _auth = Auth();
 
   @override
   void initState() {
@@ -582,10 +592,13 @@ class _InboxScreenState extends State<InboxScreen> {
   /// Load user's credits
   Future<void> _loadCredits() async {
     try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
       final data = await supabase
           .from('users')
           .select('credits')
-          .eq('uid', uid)
+          .eq('uid', user.uid)
           .maybeSingle();
 
       if (data is Map<String, dynamic>) {
@@ -598,94 +611,219 @@ class _InboxScreenState extends State<InboxScreen> {
 
   /// Load demo or real requests
   Future<void> _loadRequests() async {
-    final List<RequestData> loadedRequests = [
-      const RequestData(
-        id: 'demo1',
-        name: 'Demo Student',
-        course: 'Flutter Basics',
-        duration: '1 Hr',
-        coins: 50,
-        availableTimes: ['Now +5 sec'],
-      ),
-    ];
+    final user = _auth.currentUser;
+    if (user == null) return;
 
-    setState(() {
-      requests = loadedRequests;
-    });
-  }
+    setState(() => loadingRequests = true);
 
-  /// Add coins after meeting
-  Future<void> _addCoins(int coinsToAdd) async {
     try {
-      final data = await supabase
-          .from('users')
-          .select('credits')
-          .eq('uid', uid)
-          .maybeSingle();
+      final mentorRequests = await _dbService.getMentorRequests(user.uid);
 
-      int currentCredits = totalCreditsNotifier.value;
-      if (data is Map<String, dynamic>) {
-        currentCredits = data['credits'] ?? currentCredits;
+      final parsed = mentorRequests.map((req) {
+        final course = req['courses'] as Map<String, dynamic>?;
+        final learner = req['users'] as Map<String, dynamic>?;
+        final available =
+            (req['available_times'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+
+        return RequestData(
+          id: (req['id'] as num).toInt(),
+          courseId: (req['course_id'] as num).toInt(),
+          learnerUid: req['learner_uid'] as String,
+          learnerName: learner?['full_name']?.toString() ?? 'Student',
+          courseTitle: course?['title']?.toString() ?? 'Course',
+          creditCost: course?['credit_cost'] as int? ?? 0,
+          durationMinutes: course?['duration_minutes'] as int? ?? 0,
+          availableTimes: available,
+          scheduledTime: req['scheduled_time'] != null
+              ? DateTime.tryParse(req['scheduled_time'].toString())
+              : null,
+        );
+      }).toList();
+
+      // Keep the demo as a fallback preview when there are no real requests
+      final newRequests = parsed.isNotEmpty
+          ? parsed
+          : [
+              const RequestData(
+                id: 0,
+                courseId: 0,
+                learnerUid: 'demo',
+                learnerName: 'Demo Student',
+                courseTitle: 'Flutter Basics',
+                creditCost: 50,
+                durationMinutes: 60,
+                availableTimes: ['Now +5 sec'],
+              ),
+            ];
+
+      if (mounted) {
+        setState(() {
+          requests = newRequests;
+        });
       }
-
-      final newCredits = currentCredits + coinsToAdd;
-
-      await supabase
-          .from('users')
-          .update({'credits': newCredits})
-          .eq('uid', uid);
-
-      totalCreditsNotifier.value = newCredits;
     } catch (e) {
-      debugPrint('Error adding coins: $e');
+      debugPrint('Error loading requests: $e');
+    }
+
+    if (mounted) {
+      setState(() => loadingRequests = false);
     }
   }
 
+  /// Accept a request, pick a slot, and start a meeting
+  Future<void> _acceptRequest(RequestData request) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final scheduledAt = await _pickTimeSlot(request);
+      if (scheduledAt == null) return;
+
+      if (request.id != 0) {
+        await _dbService.acceptCourseRequest(
+          request.id,
+          request.learnerUid,
+          request.courseId,
+        );
+      }
+
+      final password = _generateMeetingPassword();
+      await _startVideoMeeting(request, scheduledAt, password);
+      await _notifyLearner(request, scheduledAt, password);
+      await _loadRequests();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Request accepted! Meeting starting. Password: $password',
+          ),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error accepting request: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+    }
+  }
+
+  /// Let mentor pick a time slot from the student-provided list or scheduled time.
+  Future<DateTime?> _pickTimeSlot(RequestData request) async {
+    final options = <String>[];
+    options.addAll(request.availableTimes);
+    if (request.scheduledTime != null) {
+      options.add(request.scheduledTime!.toIso8601String());
+    }
+
+    if (options.isEmpty) return DateTime.now();
+
+    return showModalBottomSheet<DateTime>(
+      context: context,
+      builder: (ctx) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...options.map(
+              (slot) => ListTile(
+                title: Text(slot),
+                onTap: () {
+                  Navigator.pop(ctx, DateTime.tryParse(slot) ?? DateTime.now());
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('Start now'),
+              onTap: () => Navigator.pop(ctx, DateTime.now()),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Start meeting and show meeting link
-  Future<void> _startDemoMeeting(RequestData request) async {
+  Future<void> _startVideoMeeting(
+    RequestData request,
+    DateTime startAt,
+    String password,
+  ) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
     final roomName =
-        'ETLearn_${request.name}_${DateTime.now().millisecondsSinceEpoch}';
+        'ETLearn_${request.courseId}_${DateTime.now().millisecondsSinceEpoch}';
     final meetingLink = 'https://meet.jit.si/$roomName';
 
-    // Update UI to show link
-    final updatedRequest = RequestData(
-      id: request.id,
-      name: request.name,
-      course: request.course,
-      duration: request.duration,
-      coins: request.coins,
-      availableTimes: request.availableTimes,
-      meetingLink: meetingLink,
-    );
-
-    setState(() {
-      requests.remove(request);
-      requests.insert(0, updatedRequest); // show updated tile
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Meeting link ready: $meetingLink')));
-
-    // Short delay before starting meeting
-    await Future.delayed(const Duration(seconds: 2));
+    final wait = startAt.difference(DateTime.now());
+    if (wait > Duration.zero) {
+      final capped = wait < const Duration(minutes: 15) ? wait : Duration.zero;
+      if (capped > Duration.zero) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Starting meeting at ${startAt.toLocal()} (${capped.inMinutes} min)',
+              ),
+            ),
+          );
+        }
+        await Future.delayed(capped);
+      }
+    }
 
     await JitsiMeetWrapper.joinMeeting(
       options: JitsiMeetingOptions(
         roomNameOrUrl: roomName,
-        userDisplayName: 'Teacher',
+        userDisplayName: user.displayName ?? 'Mentor',
+        configOverrides: {'requireDisplayName': true, 'roomPassword': password},
       ),
     );
-
-    // Add coins after meeting ends
-    await _addCoins(request.coins);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Meeting ended. Coins (${request.coins}) credited!'),
+        content: Text('Meeting link: $meetingLink | Password: $password'),
+        duration: const Duration(seconds: 8),
       ),
     );
+  }
+
+  String _generateMeetingPassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rand = Random.secure();
+    return List.generate(6, (_) => chars[rand.nextInt(chars.length)]).join();
+  }
+
+  Future<void> _notifyLearner(
+    RequestData request,
+    DateTime scheduledAt,
+    String password,
+  ) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final roomName =
+          'ETLearn_${request.courseId}_${DateTime.now().millisecondsSinceEpoch}';
+      final meetingLink = 'https://meet.jit.si/$roomName';
+      final whenLabel = scheduledAt.toLocal().toString();
+
+      await _dbService.sendMessage(
+        senderUid: user.uid,
+        receiverUid: request.learnerUid,
+        content:
+            'Your session for ${request.courseTitle} is scheduled at $whenLabel. Join: $meetingLink Password: $password',
+        courseId: request.courseId,
+      );
+    } catch (e) {
+      debugPrint('Failed to notify learner: $e');
+    }
   }
 
   @override
@@ -753,37 +891,45 @@ class _InboxScreenState extends State<InboxScreen> {
                   ],
                 ),
                 child: isRequestsTab
-                    ? requests.isEmpty
+                    ? (loadingRequests
+                          ? const Center(child: CircularProgressIndicator())
+                          : requests.isEmpty
                           ? const Center(
                               child: Text(
                                 'No pending requests',
                                 style: TextStyle(color: Colors.grey),
                               ),
                             )
-                          : ListView(
-                              children: requests
-                                  .map(
-                                    (req) => RequestTile(
-                                      request: req,
-                                      onAccept: () => _startDemoMeeting(req),
-                                      onDeny: () {
-                                        setState(() {
-                                          requests.remove(req);
-                                        });
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Denied ${req.name}, requester notified.',
+                          : RefreshIndicator(
+                              onRefresh: _loadRequests,
+                              child: ListView(
+                                children: requests
+                                    .map(
+                                      (req) => RequestTile(
+                                        request: req,
+                                        onAccept: () => _acceptRequest(req),
+                                        onDeny: () async {
+                                          await _dbService.rejectCourseRequest(
+                                            req.id,
+                                          );
+                                          setState(() {
+                                            requests.remove(req);
+                                          });
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Denied ${req.learnerName}, requester notified.',
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  )
-                                  .toList(),
-                            )
+                                          );
+                                        },
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ))
                     : const Center(
                         child: Text(
                           'Chat screen here...',
@@ -843,13 +989,17 @@ class RequestTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheduledLabel = request.scheduledTime != null
+        ? 'Scheduled: ${request.scheduledTime!.toLocal()}'
+        : null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            request.name,
+            request.learnerName,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -858,13 +1008,37 @@ class RequestTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${request.course} • ${request.duration} • ${request.coins} coins',
+            '${request.courseTitle} • ${(request.durationMinutes ~/ 60)}h ${(request.durationMinutes % 60)}m • ${request.creditCost} credits',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: Color(0xFF545454),
             ),
           ),
+          if (request.availableTimes.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Preferred times: ${request.availableTimes.join(', ')}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0961F5),
+                ),
+              ),
+            ),
+          if (scheduledLabel != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                scheduledLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF167F71),
+                ),
+              ),
+            ),
           if (request.meetingLink != null) ...[
             const SizedBox(height: 4),
             SelectableText(
