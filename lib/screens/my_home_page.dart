@@ -153,6 +153,8 @@ class _MyHomePageState extends State<MyHomePage> {
             top: 30,
           ),
           _pad(_featuredMentors(), top: 15),
+          // Extra space so the floating action button does not cover the last item
+          const SizedBox(height: 90),
         ],
       ),
     );

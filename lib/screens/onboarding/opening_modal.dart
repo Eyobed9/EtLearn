@@ -21,7 +21,7 @@ class _ModalState extends State<Modal> {
 
   void _navigateToLoginPage() {
     Timer(Duration(seconds: 5), () {
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const Onboarding()),
       );

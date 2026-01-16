@@ -64,8 +64,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '345964728818',
     projectId: 'etlearn-9ed52',
     storageBucket: 'etlearn-9ed52.firebasestorage.app',
-    androidClientId: '345964728818-pubrsilr231cmgv0s67pgvl0lvbnjqj9.apps.googleusercontent.com',
-    iosClientId: '345964728818-6d13t1a1doh7pq5m34fsfrmjummgn4v6.apps.googleusercontent.com',
+    androidClientId:
+        '345964728818-pubrsilr231cmgv0s67pgvl0lvbnjqj9.apps.googleusercontent.com',
+    iosClientId:
+        '345964728818-6d13t1a1doh7pq5m34fsfrmjummgn4v6.apps.googleusercontent.com',
     iosBundleId: 'com.example.etLearn',
   );
 
@@ -75,8 +77,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '345964728818',
     projectId: 'etlearn-9ed52',
     storageBucket: 'etlearn-9ed52.firebasestorage.app',
-    androidClientId: '345964728818-pubrsilr231cmgv0s67pgvl0lvbnjqj9.apps.googleusercontent.com',
-    iosClientId: '345964728818-6d13t1a1doh7pq5m34fsfrmjummgn4v6.apps.googleusercontent.com',
+    androidClientId:
+        '345964728818-pubrsilr231cmgv0s67pgvl0lvbnjqj9.apps.googleusercontent.com',
+    iosClientId:
+        '345964728818-6d13t1a1doh7pq5m34fsfrmjummgn4v6.apps.googleusercontent.com',
     iosBundleId: 'com.example.etLearn',
   );
 
@@ -89,5 +93,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'etlearn-9ed52.firebasestorage.app',
     measurementId: 'G-59SE2VN0ML',
   );
-
 }

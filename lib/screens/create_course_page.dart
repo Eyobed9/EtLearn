@@ -46,24 +46,31 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
   }
 
   Future<void> _checkProfileAndLoad() async {
-    // Check if user has a complete profile
-    final needsSetup = await UserSyncService.needsProfileSetup(user);
-    if (needsSetup) {
-      // Navigate to profile setup
+    // Only trigger setup when the user has not provided subjects to teach
+    final profile = await supabase
+        .from('users')
+        .select('subjects_teach')
+        .eq('uid', user.uid)
+        .maybeSingle();
+
+    final needsSubjectSetup =
+        profile == null || profile['subjects_teach'] == null;
+
+    if (needsSubjectSetup) {
       if (!mounted) return;
       final result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const SetupProfilePage()),
       );
-      
-      // If user didn't complete setup, go back
+
+      // If the user bails out of setup, leave the page
       if (result != true) {
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
         return;
       }
     }
-    
-    // Load subjects after profile check
+
+    // Load subjects after ensuring the profile has teaching subjects
     _loadSubjects();
   }
 
@@ -147,7 +154,7 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
       return;
     }
 
-    final thumbUrl = await _uploadThumbnail(); 
+    final thumbUrl = await _uploadThumbnail();
     final now = DateTime.now().toUtc().toIso8601String();
 
     await supabase.from('courses').insert({

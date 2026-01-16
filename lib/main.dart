@@ -7,10 +7,8 @@ import 'package:et_learn/widget_tree.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔐 Firebase Auth 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // 🔐 Firebase Auth
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // 🧠 Supabase Database
   await Supabase.initialize(

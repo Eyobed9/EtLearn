@@ -64,7 +64,7 @@ class _MyCoursesViewState extends State<MyCoursesView> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView(
         children: [
-          const Padding(padding: EdgeInsets.only(top: 8)),
+          const SizedBox(height: 8),
           const Padding(
             padding: EdgeInsets.only(top: 8.0, bottom: 12.0),
             child: Text(
@@ -78,7 +78,8 @@ class _MyCoursesViewState extends State<MyCoursesView> {
             ),
           ),
           _searchBox(),
-          const Padding(padding: EdgeInsets.only(top: 20)),
+          const SizedBox(height: 20),
+          // Tabs
           Row(
             children: [
               Expanded(
@@ -92,7 +93,7 @@ class _MyCoursesViewState extends State<MyCoursesView> {
                   ),
                 ),
               ),
-              const Padding(padding: EdgeInsets.only(left: 12)),
+              const SizedBox(width: 12),
               Expanded(
                 child: GestureDetector(
                   onTap: () => setState(() {
@@ -106,7 +107,8 @@ class _MyCoursesViewState extends State<MyCoursesView> {
               ),
             ],
           ),
-          const Padding(padding: EdgeInsets.only(top: 20)),
+          const SizedBox(height: 20),
+          // Courses List
           if (loading)
             const Center(child: CircularProgressIndicator())
           else if (selectedTab == CourseTabType.learning)
@@ -121,27 +123,32 @@ class _MyCoursesViewState extends State<MyCoursesView> {
                     ),
                   )
                 : Column(
-                    children: learningCourses.map((course) => GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CourseDetailPage(course: course),
-                              ),
-                            );
-                          },
-                          child: CourseCard(
-                            category: course['subject'] ?? 'Unknown',
-                            title: course['title'] ?? '',
-                            rating: '⭐',
-                            duration:
-                                '${(course['duration_minutes'] ?? 0) ~/ 60} Hrs ${(course['duration_minutes'] ?? 0) % 60} Mins',
-                            progress: course['progress'] ?? 0.0,
-                            progressText:
-                                '${((course['progress'] ?? 0.0) * 100).toInt()}%',
-                            progressColor: const Color(0xFF167F71),
+                    children: learningCourses
+                        .map(
+                          (course) => GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      CourseDetailPage(course: course),
+                                ),
+                              );
+                            },
+                            child: CourseCard(
+                              category: course['subject'] ?? 'Unknown',
+                              title: course['title'] ?? '',
+                              rating: '⭐',
+                              duration:
+                                  '${(course['duration_minutes'] ?? 0) ~/ 60} Hrs ${(course['duration_minutes'] ?? 0) % 60} Mins',
+                              progress: course['progress'] ?? 0.0,
+                              progressText:
+                                  '${((course['progress'] ?? 0.0) * 100).toInt()}%',
+                              progressColor: const Color(0xFF167F71),
+                            ),
                           ),
-                        )).toList(),
+                        )
+                        .toList(),
                   )
           else
             teachingCourses.isEmpty
@@ -155,32 +162,38 @@ class _MyCoursesViewState extends State<MyCoursesView> {
                     ),
                   )
                 : Column(
-                    children: teachingCourses.map((course) => GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CourseDetailPage(course: course),
-                              ),
-                            );
-                          },
-                          child: CourseCard(
-                            category: course['subject'] ?? 'Unknown',
-                            title: course['title'] ?? '',
-                            rating: '⭐',
-                            duration:
-                                '${(course['duration_minutes'] ?? 0) ~/ 60} Hrs ${(course['duration_minutes'] ?? 0) % 60} Mins',
-                            progress: 0.0,
-                            progressText: '0%',
-                            progressColor: const Color(0xFFFCCB40),
+                    children: teachingCourses
+                        .map(
+                          (course) => GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      CourseDetailPage(course: course),
+                                ),
+                              );
+                            },
+                            child: CourseCard(
+                              category: course['subject'] ?? 'Unknown',
+                              title: course['title'] ?? '',
+                              rating: '⭐',
+                              duration:
+                                  '${(course['duration_minutes'] ?? 0) ~/ 60} Hrs ${(course['duration_minutes'] ?? 0) % 60} Mins',
+                              progress: 0.0,
+                              progressText: '0%',
+                              progressColor: const Color(0xFFFCCB40),
+                            ),
                           ),
-                        )).toList(),
+                        )
+                        .toList(),
                   ),
         ],
       ),
     );
   }
 
+  // ---------------- Search Box ----------------
   Widget _searchBox() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -282,14 +295,14 @@ class CourseCard extends StatelessWidget {
                 Row(
                   children: [
                     const Icon(Icons.star, size: 14, color: Color(0xFFFFD166)),
-                    const Padding(padding: EdgeInsets.only(left: 6)),
+                    const SizedBox(width: 6),
                     Text(
                       rating,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    const Padding(padding: EdgeInsets.only(left: 12)),
+                    const SizedBox(width: 12),
                     const Text('|', style: TextStyle(fontSize: 14)),
-                    const Padding(padding: EdgeInsets.only(left: 12)),
+                    const SizedBox(width: 12),
                     Text(
                       duration,
                       style: const TextStyle(color: Color(0xFF545454)),
@@ -302,7 +315,7 @@ class CourseCard extends StatelessWidget {
                 ),
               ],
             ),
-            const Padding(padding: EdgeInsets.only(top: 8)),
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
@@ -330,19 +343,17 @@ class _CourseTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 48,
-      decoration: BoxDecoration(
-        color: selected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: selected
-            ? const [BoxShadow(color: Color(0x14000000), blurRadius: 8)]
-            : null,
-      ),
       alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFF167F71) : const Color(0xFFE8F1FF),
+        borderRadius: BorderRadius.circular(24),
+      ),
       child: Text(
         title,
         style: TextStyle(
-          color: selected ? const Color(0xFF202244) : const Color(0xFFB4BDC4),
-          fontWeight: FontWeight.w700,
+          color: selected ? Colors.white : const Color(0xFF202244),
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

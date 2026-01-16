@@ -36,7 +36,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
         context,
         MaterialPageRoute(builder: (_) => const SetupProfilePage()),
       );
-      
+
       // If user completed setup, try again
       if (result == true) {
         await _sendRequest();
@@ -70,9 +70,9 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     } catch (e) {
       debugPrint('Error sending request: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     }
 
     setState(() => sendingRequest = false);
@@ -263,10 +263,13 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                         style: TextStyle(color: Colors.grey),
                       )
                     : ElevatedButton(
-                        onPressed: sendingRequest ? null : _checkProfileAndRequest,
+                        onPressed: sendingRequest
+                            ? null
+                            : _checkProfileAndRequest,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF167F71),
                           padding: const EdgeInsets.symmetric(vertical: 16),
+                          minimumSize: const Size.fromHeight(56),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
